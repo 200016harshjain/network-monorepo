@@ -9,7 +9,7 @@
     "./apps/*"
   ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "lerna run test --parallel" 
   },
   "repository": {
     "type": "git",
@@ -22,7 +22,8 @@
   },
   "homepage": "https://github.com/shovelers/protocol#readme",
   "devDependencies": {
-    "lerna": "^6.6.2"
+    "lerna": "^6.6.2",
+    "mocha": "^10.3.0"
   },
   "overrides": {
     "ipfs-bitswap": "19.0.0"
