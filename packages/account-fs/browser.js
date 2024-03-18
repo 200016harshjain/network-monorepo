@@ -2,7 +2,7 @@ import { createNode, BROWSER } from './agent/helia_node.js';
 import { Account } from './agent/account.js'
 import { Agent, BROWSER_RUNTIME, AccountCapability, StorageCapability, MessageCapability, Runtime } from './agent/agent.js'
 import { SearchCapability } from './people/search.js'
-import { PeopleRepository } from "./people/people.js";
+import { PeopleRepository } from "./people/people.ts";
 import { Person } from "./people/person.js";
 import { IDBBlockstore } from 'blockstore-idb'
 import { IDBDatastore } from 'datastore-idb'
