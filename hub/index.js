@@ -78,7 +78,7 @@ server.post('/pin', async (req, res) => {
   var handle = req.body.message.handle
   await node.datastore.put(new Key('/handle/' + handle), cid.bytes)
   var pin = node.pins.add(cid)
-  console.log("pin", pin, cid)
+  console.log("pin", cid)
   res.status(201).json({})
 });
 
@@ -176,9 +176,14 @@ server.get("/forestCID/:handle", async (req, res) => {
 });
 
 server.get("/", async (req, res) => {
+  const numberOfDevices = await redisClient.sCard("accounts"); 
+  //TODO : Change "accounts" to something more appropriate like active sessions in redis
+  const numberOfAccounts = await redisClient.sCard("handles"); 
+
   res.render('pages/index', {
-    registries: 0,
-    relationships: 0
+   
+    agents : numberOfDevices,
+    accounts: numberOfAccounts
   })
 });
 
@@ -188,3 +193,5 @@ server.listen(port, (err) => {
     `> Ready`
   );
 });
+
+process.on('warning', e => console.warn(e.stack));
