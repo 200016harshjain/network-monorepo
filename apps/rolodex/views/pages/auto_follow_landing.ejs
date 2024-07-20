@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+  <head>
+    <link rel="stylesheet" href="/styles/style.css" />
+    <link rel="icon" href="/favicon.ico">
+    <script src="https://cdn.jsdelivr.net/gh/papnkukn/qrcode-svg/dist/qrcode.min.js"></script>
+    <title>Rolodex App</title>
+  </head>
+
+  <%- include('../partials/google_analytics.ejs') %>
+
+  <body class="antialiased bg-base-100">
+    <script type="module">
+    import { account, getContactForRelate, addConnection, portOldContacts, addContact, getContacts, getContactByUID, editContact, deleteContact, filterContacts,
+        getProfile, updateProfile, signout, importContacts, appleCredsPresent, importGoogleContacts, downloadContactsDataLocally, getMembers,getCommunityMembers, uint8arrays} from '/odd.js';
+      window.addContact = addContact;
+      window.getContacts = getContacts;
+      window.editContact = editContact;
+      window.deleteContact = deleteContact;
+      window.filterContacts = filterContacts;
+      window.updateProfile = updateProfile;
+      window.signout = signout;
+      window.importContacts = importContacts;
+      window.importGoogleContacts = importGoogleContacts;
+      window.downloadContactsDataLocally = downloadContactsDataLocally;
+      window.getProfile = getProfile;
+      window.getContactByUID = getContactByUID;
+      window.addConnection = addConnection;
+      window.getContactForRelate = getContactForRelate;
+      window.addConnection = addConnection;
+      window.appleCredsPresent = appleCredsPresent;
+      window.getMembers = getMembers;
+      window.uint8arrays = uint8arrays;
+      var farcasterHandle;
+
+      window.getListOfFidFromCommunityContact = async function(communityContact){
+         console.log(communityContact);
+         var communityDID = communityContact.UID;
+         let community = await getContactByUID(communityDID)
+         console.log('community', community);
+         getCommunityMembers(community).then((result) => {
+            //call hub api called getNames - but i need account did of the user
+         })
+      }
+     
+      window.refreshContacts = async function(){
+        window.getContacts().then((result) => {
+          result.contactList.forEach((contact) => {
+                if (contact.CATEGORIES === "community") {
+                  const communityName = contact.FN;
+                  const communityElement = document.createElement('h2');
+                  communityElement.textContent = `You are a member of ${communityName}`;
+                  communityList.appendChild(communityElement);
+                  getListOfFidFromCommunityContact(contact);
+                  //if this is the main page - can make community word a link to the actual community
+                }
+          })
+        })
+      }
+     await refreshContacts();
+      
+      window.refreshProfile = function(){
+        window.getProfile().then((result) => {
+          console.log("profile is",result);
+      const welcomeMessage = document.getElementById('welcomeMessage');
+        welcomeMessage.textContent = `Welcome ${result.handle}`;
+       welcomeMessage.style.display = 'block';
+      })}
+      refreshProfile();
+
+
+
+    
+    </script>
+
+    <div class="container mx-auto px-4 justify-center h-screen flex flex-col  items-center">
+      <h1 id="welcomeMessage" style="display: none;">Welcome</h1>
+      <div id="communityList"></div>
+    </div>
+      <%- include('../partials/shovel.ejs') %>
+    </div>
+  </body>
+</html>

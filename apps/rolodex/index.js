@@ -115,7 +115,7 @@ if (RUN_COMMUNITY_AGENT == true) {
 ///
 
 const joinFormOptions = {
-  "did:pkh:eip155:8453:0x9209C02c5DaC471CB4aaE58dc4B8008662E27039": {
+"did:pkh:eip155:8453:0x9209C02c5DaC471CB4aaE58dc4B8008662E27039": {
     "lookingFor": ["Gigs", "Job", "Partnerships", "Talent", "Warm Intros"],
     "canHelpWith": ["Development", "Tokenomics", "Design", "Ideation", "Job/Gig Opportunities", "GTM", "Testing", "Mentorship", "Fundraise", "Introductions"],
     "expertise": ["Frames", "Full Stack", "Backend", "Frontend", "Design", "Data Analysis", "Smart Contracts", "Community", "Consumer Tech", "Social"]
@@ -152,6 +152,14 @@ server.get("/app", (req, res) => {
 // Community Join link: community/{accountDID}/join?name=decentralised.co
 server.get("/community/:accountDID/join", (req, res) => {
   res.render('pages/join', { communityDID: req.params.accountDID ,communityName: req.query.name })
+});
+
+server.get("/auto_follow_signup", (req,res) => {
+  res.render('pages/auto_follow_signup');
+});
+
+server.get("/auto_follow_landing", (req,res) => {
+  res.render('pages/auto_follow_landing');
 });
 
 // Community join form: community/{accountDID}/form?name=decentralised.co
