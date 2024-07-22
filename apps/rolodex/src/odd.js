@@ -343,6 +343,10 @@ async function portOldContacts(contacts){
   await contactRepo.bulkCreate(list)
 }
 
+async function getFidFromAccountDID(accountDID) {
+  return await accountv1.agent.getFID(accountDID);
+}
+
 export { 
   account,
   farcasterClient,
@@ -371,5 +375,6 @@ export {
   getMembers,
   getCommunityMembers,
   filterMembers,
+  getFidFromAccountDID,
   uint8arrays
 };
