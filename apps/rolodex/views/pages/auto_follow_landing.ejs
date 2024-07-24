@@ -61,64 +61,6 @@
         font-size: 1.25rem;
         font-weight: 600;
       }
-      .modal {
-        display: none;
-        position: fixed;
-        z-index: 1000; /* Increase z-index to ensure it's on top */
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        background-color: rgba(0,0,0,0.4);
-      }
-      .modal-content {
-        background-color: #1e293b;
-        margin: 15% auto;
-        padding: 20px;
-        border-radius: 0.5rem;
-        width: 80%;
-        max-width: 500px;
-        position: relative; /* Add this */
-
-      }
-      .modal-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 1rem;
-      }
-      .modal-header img {
-        width: 4rem;
-        height: 4rem;
-        border-radius: 50%;
-        margin-right: 1rem;
-      }
-      .modal-header h2 {
-        font-size: 1.5rem;
-        font-weight: bold;
-      }
-      .modal-buttons {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 1rem;
-      }
-      .btn {
-        background-color: #3b82f6;
-        color: white;
-        border: none;
-        border-radius: 0.25rem;
-        padding: 0.5rem 1rem;
-        cursor: pointer;
-        transition: background-color 0.3s;
-      }
-      .btn:hover {
-        background-color: #2563eb;
-      }
-      .footer {
-        margin-top: 2rem;
-        font-size: 0.875rem;
-        color: #64748b;
-      }
     </style>
   </head>
 
@@ -148,17 +90,7 @@
       let communityMap = new Map();
       let communityCount = 0;
 
-      window.openModal = function(community) {
-        const modal = document.getElementById('communityModal');
-        const modalImage = document.getElementById('modalImage');
-        const modalCommunityName = document.getElementById('modalCommunityName');
-
-        modalImage.src = community.PHOTO || 'https://via.placeholder.com/50';
-        modalCommunityName.textContent = community.FN;
-        modal.style.display = 'block';
-    console.log("Modal display set to 'block'");
-    console.log("Modal current display style:", window.getComputedStyle(modal).display);
-      }
+     
 
       window.followRandom = function() {
         console.log('Following 3 random people');
@@ -170,13 +102,7 @@
         // Implement the logic to follow all people
       }
 
-      // Close the modal when clicking outside of it
-      window.onclick = function(event) {
-        const modal = document.getElementById('communityModal');
-        if (event.target == modal) {
-          modal.style.display = 'none';
-        }
-      }
+     
 
       window.updateCommunityCount = function() {
         const countMessage = document.getElementById('communityCountMessage');
@@ -213,10 +139,7 @@
               const communityName = contact.FN;
               const communityContainer = document.createElement('div');
               communityContainer.className = 'community-item';
-              communityContainer.onclick = function() {
-                console.log("community item clicked", contact);
-                window.openModal(contact);
-              }
+             
 
               const communityInfo = document.createElement('div');
               communityInfo.className = 'community-info';
@@ -234,6 +157,16 @@
               communityInfo.appendChild(communityElement);
               communityContainer.appendChild(communityInfo);
               communityList.appendChild(communityContainer);
+
+              communityContainer.addEventListener('click', () => {
+          const modal = document.getElementById('community_modal');
+          const modalImage = document.getElementById('modalImage');
+          const modalCommunityName = document.getElementById('modalCommunityName');
+
+          modalImage.src = contact.PHOTO || 'https://via.placeholder.com/50';
+          modalCommunityName.textContent = contact.FN;
+          modal.showModal();
+        });
 
               getListOfFidFromCommunityContact(contact);
             }
@@ -262,19 +195,16 @@
         <div id="welcomeMessage" style="display: none;">Welcome</div>
         <div id="communityCountMessage"></div>
         <div id="communityList"></div>
-        <div id="communityModal" class="modal">
-          <div class="modal-content">
-            <span class="close">&times;</span>
-            <div class="modal-header">
-              <img id="modalImage" src="" alt="Community Image">
+      </div>
+          <dialog id="community_modal" class="modal">
+            <div class="modal-box">
+              <div class="modal-action flex flex-col justify-center items-center space-y-2"></div>
               <h2 id="modalCommunityName"></h2>
-            </div>
-            <div class="modal-buttons">
-              <button class="btn" onclick="followRandom()">Follow 3 Random People</button>
-              <button class="btn" onclick="followAll()">Follow All</button>
-            </div>
-          </div>
-        </div>
+              <img id="modalImage" src="" alt="Community Image">
+             <button onclick="followRandom()">Follow any 3 people </button>
+             <button onclick="followAll()">Follow All</button>
+           </div>
+          </dialog>
         <%- include('../partials/shovel.ejs') %>
       </div>
   </body>
