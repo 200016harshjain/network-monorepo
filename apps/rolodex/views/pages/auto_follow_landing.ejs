@@ -29,7 +29,7 @@
         width: 100%;
         max-width: 400px;
       }
-      .community-item {
+      .list-item {
         display: flex;
         align-items: center;
         justify-content: flex-start;
@@ -84,9 +84,28 @@
       var farcasterHandle;
       let communityMap = new Map();
       let communityCount = 0;
-
-     
-
+      var listOfAccountsUserIsFollowing = [];
+      var listOfCommunityMembersNotFollowed = [];
+      var userFID;
+      var listOfFIDsToFollow = [];
+         //follow a list of accounts using listOfFIDsToFollow and userFID
+      window.getListOfAccountsUserIsFollowing = async function() {
+        let fid = await getFidFromAccountDID(await shovel.agent.accountDID());
+        userFID = fid.split('@')[0];
+        console.log("user fid is",userFID);
+        //make the api call to farcaster using the userFID
+        listOfAccountsUserIsFollowing.push("11155"); //rishi, prashant 
+      }
+      getListOfAccountsUserIsFollowing(); 
+      window.refreshProfile = function(){
+        window.getProfile().then((result) => {
+          console.log("profile is", result);
+          const welcomeMessage = document.getElementById('welcomeMessage');
+          welcomeMessage.textContent = `Welcome ${result.handle}`;
+          welcomeMessage.style.display = 'block';
+        });
+      }
+      refreshProfile();   
       window.followRandom = function() {
         console.log('Following 3 random people');
         // Implement the logic to follow 3 random people
@@ -105,35 +124,33 @@
       }
 
       window.getListOfFidFromCommunityContact = async function(communityContact){
-         console.log(communityContact);
          var communityDID = communityContact.UID;
          let community = await getContactByUID(communityDID);
-         await getCommunityMembers(community);
+         let communityMembers = await getCommunityMembers(community);
         if (community.cache) {
-          let fidArray = [];
+          let communityUserDataArray = [];
           for (let member of community.cache.people) {
               let uid = member.UID;
               let fid = await getFidFromAccountDID(uid.slice(4)); //remove DCN 
-              fidArray.push([fid.split('@')[0], null]); // get '123' from '123@farcaster'
+              communityUserDataArray.push([fid.split('@')[0], member.cache.profile.handle, member.cache.profile.pfpUrl, null]); // get '123' from '123@farcaster'
           }
-          console.log("fidArray", fidArray);
-          console.log("community name",communityContact.FN );
-          communityMap.set(communityContact.FN, fidArray);
+          communityMap.set(communityContact.FN, communityUserDataArray);
         }
+        console.log("map", communityMap);
       }
      
       window.refreshContacts = async function(){
         const communityList = document.getElementById('communityList');
+        const notFollowedList = document.getElementById('notFollowedList');
         communityList.innerHTML = ''; // Clear existing content
 
         window.getContacts().then((result) => {
-          result.contactList.push(result.contactList[0])
           result.contactList.forEach((contact) => {
             if (contact.CATEGORIES === "community") {
               communityCount++;
               const communityName = contact.FN;
               const communityContainer = document.createElement('div');
-              communityContainer.className = 'community-item';
+              communityContainer.className = 'list-item';
              
 
               const communityInfo = document.createElement('div');
@@ -154,13 +171,28 @@
               communityList.appendChild(communityContainer);
 
               communityContainer.addEventListener('click', () => {
-          const modal = document.getElementById('community_modal');
-          // const modalImage = document.getElementById('modalImage');
-          const modalCommunityName = document.getElementById('modalCommunityName');
+              const modal = document.getElementById('community_modal');
+              let communityMemberDataFromMap =  communityMap.get(communityName)
+              const modalCommunityName = document.getElementById('modalCommunityName');
+              let listOfCommunityMembersNotFollowed = communityMemberDataFromMap.filter(member => Array.isArray(member) && !listOfAccountsUserIsFollowing.includes(member[0]) && member[0] !== userFID);
+              console.log("listOfCommunityMembersNotFollowed", listOfCommunityMembersNotFollowed);
+              modalCommunityName.textContent = `You follow ${communityMemberDataFromMap.length-listOfCommunityMembersNotFollowed.length}  out of ${communityMemberDataFromMap.length} members from ${communityName}`;
+              
+              notFollowedList.innerHTML = '';
 
-          // modalImage.src = contact.PHOTO || 'https://via.placeholder.com/50';
-          modalCommunityName.textContent = contact.FN;
-          modal.showModal();
+              // Populate notFollowedList
+                listOfCommunityMembersNotFollowed.forEach((member) => {
+                  const memberItem = document.createElement('div');
+                  memberItem.className = 'flex items-center justify-start bg-[#1e293b] rounded-lg p-4 mb-4';
+                  memberItem.innerHTML = `
+                    <span class="mr-2">${member[1]}.</span>
+                    <span class="mr-2">${member[2]}</span>
+                    <span class="mr-2">${'https://warpcast.com/'+member[1]}</span>
+                    <span>${member[3] || 'N/A'}</span>
+                  `;
+                  notFollowedList.appendChild(memberItem);
+                });
+              modal.showModal();
         });
 
               getListOfFidFromCommunityContact(contact);
@@ -170,20 +202,9 @@
           updateCommunityCount();
         });
       }
-
-      window.refreshProfile = function(){
-        window.getProfile().then((result) => {
-          console.log("profile is", result);
-          const welcomeMessage = document.getElementById('welcomeMessage');
-          welcomeMessage.textContent = `Welcome ${result.handle}`;
-          welcomeMessage.style.display = 'block';
-        });
-      }
-
       
-
       await refreshContacts();
-      refreshProfile();
+     
     </script>
     <body class="antialiased">
       <div class="container">
@@ -199,9 +220,9 @@
             </button>
             </div>
           <div class="flex text-center mb-4">
-            <!-- //<img id="modalImage" src="" alt="Community Image" class="mx-auto mb-2"> -->
             <h2 id="modalCommunityName" class="text-xl font-bold"></h2>
           </div>
+          <div id="notFollowedList" class="w-full max-w-md mt-4"></div>
         <div class="modal-action mt-auto flex justify-between w-full">
             <button onclick="followRandom()" class="btn btn-outline btn-sm">Follow any 3 people</button>
             <button onclick="followAll()" class="btn btn-outline btn-sm">Follow All</button>
