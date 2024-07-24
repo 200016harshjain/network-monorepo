@@ -3,7 +3,7 @@ import _ from 'lodash';
 import {vCardParser} from './vcard_parser.js';
 import { ContactTable } from "./contact_table";
 import { MemberTable } from "./member_table";
-import { programInit, Person, PeopleRepository, AccountV1, MembersRepository, PeopleSearch } from 'account-fs';
+import { programInit, Person, AccountV1 } from 'account-fs';
 import * as uint8arrays from 'uint8arrays';
 import { createAppClient, viemConnector } from '@farcaster/auth-client';
 import { save } from '@tauri-apps/api/dialog';
@@ -21,13 +21,11 @@ const NETWORK = import.meta.env.VITE_NETWORK || "DEVNET"
 const program = await programInit(NETWORK, "rolodex")
 window.shovel = program
 
-const contactRepo = new PeopleRepository(program.agent)
-const peopleSearch = new PeopleSearch(program.agent, contactRepo)
-const membersRepo = new MembersRepository(program.agent)
-const account = new AccountV1(program.agent, ["PEOPLE"])
+const account = new AccountV1(program.agent)
+await account.loadRepositories()
+const contactRepo = account.repositories.people 
 const accountv1 = account
 shovel.account = account
-shovel.peopleSearch = peopleSearch
 
 customElements.define('contact-table', ContactTable);
 customElements.define('member-table', MemberTable);
@@ -84,17 +82,20 @@ async function verifySiweMessage(message,signature,nonce) {
 }
 
 async function getMembers() {
-  var list = await membersRepo.list()
-  console.log("all", list)
-  return {memberList: list}
+  if (account.repositories.members) {
+    var list = await account.repositories.members.list()
+    console.log("all", list)
+    return {memberList: list}
+  }
+  return {memberList: undefined}
 }
 
 async function getCommunityMembers(community) {
-  return await peopleSearch.search({personUID: community.UID})
+  return await account.search({personUID: community.UID})
 }
 
 async function filterMembers(filter, profiles, communityUID) {
-  return await peopleSearch.search({query: filter, personUID: communityUID})
+  return await account.search({query: filter, personUID: communityUID})
 }
 
 async function getProfile() {
@@ -107,28 +108,12 @@ async function getContacts() {
   return {contactList: list}
 }
 
-async function getContactForRelate() {
-  let profile = await getProfile()
-  //XML = {filename:handle.accesskey}
-    //handle to fetch latest forestCID from hub using the /forestCID/:handle API & load the forest
-    //access key to read the file content
-  let contactsAccessKey = await program.agent.getAccessKeyForPrivateFile(contactRepo.filename)
-  let encodedContactsAccessKey = uint8arrays.toString(contactsAccessKey.toBytes(), 'base64');
- 
-  return {
-    FN: profile.name,
-    UID: `DCN:${profile.handle}`,
-    PRODID: "DCN:rolodex", // TODO figure how to get app handle
-    XML: `${contactRepo.filename}:${profile.handle}.${encodedContactsAccessKey}`
-  }
-}
-
 async function getContactByUID(uid) {
   return await contactRepo.find(uid)
 }
 
 async function filterContacts(filter) {
-  return { contactList: await peopleSearch.search({query: filter, depth: 1}) }
+  return { contactList: await account.search({query: filter, depth: 1}) }
 }
 
 
@@ -145,39 +130,6 @@ async function addContact(name, email='', tags = [], text = "", links = []) {
   
   let person = new Person({FN: name, EMAIL: convertEmailStringToEmailArray(email), CATEGORIES: tags.join(), NOTE: text, URL: links.join(), PRODID: "DCN:rolodex", UID: crypto.randomUUID()})
   return contactRepo.create(person)
-}
-
-/*
-  TODOs based on S04 -
-  create a new connection file - needs requester's (accountDID, profileFile, connectionFile) and sharedContacts (Assuming all)
-
-  Filename - connections/accountDID.json - assuming not limit to length of file name.
-  {
-    connection:  {
-      DID: accountDID //accountDID of the receiver
-      Profile: `${accessKeyToFile}` //accessKey to the received profile object
-      recievedConnectionFile: `${accessKeyToFile}` //accessKey to the received connection file 
-    }
-    sharedContacts: [Person] //only with Public attributes
-    state: "PRESENT/REMOVED"
-  }
-
-  connect handshake steps -
-    requester creates connections/approverDID.json and send handshake data
-      File content - { connection: { DID: approverDID, profile: "", receivedConnectionFile: "" }, sharedContacts: "ALLContacts", state: "REQUESTED" }
-      Handshake Data - { DID: requesterDID, profile:, `${accessKeyToFile}`, receivedConnectionFile: `${accessKeyToFile}` }
-    apporover confirms the handshake, creates connection/requesterDID.json and send something back
-      File content - { connection: { DID: requesterDID, profile:, `${accessKeyToFile}`, receivedConnectionFile: `${accessKeyToFile}` }, sharedContacts: "ALLContacts", state: "CONFIRMED" }
-      Handshake Data - { DID: approverDID, profile:, `${accessKeyToFile}`, receivedConnectionFile: `${accessKeyToFile}` } 
-    requester reads something and update connections/approverDID.json with new data
-      File content - { connection: { DID: approverDID, profile:, `${accessKeyToFile}`, receivedConnectionFile: `${accessKeyToFile}` }, sharedContacts: "ALLContacts", state: "CONFIRMED" }
-
-*/
-
-// TODO - handle duplicate connections
-async function addConnection(person) {
-  let connection = new Person({FN: person.FN, PRODID: person.PRODID, UID: person.UID, XML: person.XML})
-  return contactRepo.create(connection) 
 }
 
 function convertEmailStringToEmailArray(emailString) {
@@ -357,14 +309,12 @@ export {
   getContacts, 
   getContactByUID,
   addContact, 
-  addConnection,
   editContact, 
   deleteContact, 
   filterContacts, 
   importContacts,
   importGoogleContacts,
   appleCredsPresent,
-  getContactForRelate,
   downloadContactsDataLocally,
   portOldContacts,
   createSiweMessage,

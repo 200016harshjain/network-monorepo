@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createDAVClient } from 'tsdav';
-import { createAppNode, Agent, Runtime, connection, SERVER_RUNTIME, MessageCapability, StorageCapability, MembersRepository } from 'account-fs/app.js';
+import { createAppNode, Agent, Runtime, connection, SERVER_RUNTIME, MessageCapability, StorageCapability, MembersRepository, CommunityRepository } from 'account-fs/app.js';
 import { generateNonce } from 'siwe';
 import fs from 'node:fs/promises';
 import { access, constants } from 'node:fs/promises';
@@ -31,13 +31,13 @@ const runtime = new Runtime(SERVER_RUNTIME, runtimeConfig)
 const agent = new Agent(helia, connection[NETWORK].sync_host, connection[NETWORK].dial_prefix, runtime, "rolodex")
 Object.assign(Agent.prototype, MessageCapability);
 
-const appHandle = await agent.handle()
-const broker = await agent.handle()
 await agent.actAsRelationshipBroker()
 
 const address = process.env.ROLODEX_DNS_MULTADDR_PREFIX ? process.env.ROLODEX_DNS_MULTADDR_PREFIX + await helia.libp2p.peerId.toString() : (await helia.libp2p.getMultiaddrs()[0].toString()) 
-console.log(address)
-///
+
+const brokerDID = await agent.accountDID()
+await agent.setInbox(address)
+console.log(address, await agent.DID(), brokerDID)
 
 ///
 //Agent for Community
@@ -85,14 +85,20 @@ if (RUN_COMMUNITY_AGENT == true) {
       await members.initialise()
       
       //Run Join Approver fro community agent
-      const communityHandle = config.SHOVEL_ACCOUNT_HANDLE
-      await communityAgent.actAsJoinApprover(communityHandle)
       await communityAgent.actAsJoinApprover(communityAccountDID)
       communityAgents.push(communityAgent)
     }
 
     //start listeners for each agent
     communityAgents.forEach(async (agent) => {
+      const communityRepo = new CommunityRepository(agent)
+      let contact
+      if (await communityRepo.isInitialised()) {
+        contact = await communityRepo.contactForHandshake()
+      } else {
+        contact = await (new MembersRepository(agent)).contactForHandshake()
+      }
+
       agent.approver.notification.addEventListener("challengeRecieved", async (challengeEvent) => {
         console.log("receieved from requester :", challengeEvent.detail)
         console.log("channel from event :", challengeEvent.detail.channelName)
@@ -102,7 +108,7 @@ if (RUN_COMMUNITY_AGENT == true) {
           var memberRepo = new MembersRepository(agent)
           await memberRepo.add(challengeEvent.detail.message.challenge.person)
           // TODO Implementing auto-confim - check challenge to implement reject
-          await challengeEvent.detail.confirm.call()
+          await challengeEvent.detail.confirm({person: contact})
         } else {
           throw `Member Add on Join Handshake failed for ${agent.accountDID()}`
         }
@@ -132,21 +138,36 @@ const joinFormOptions = {
   }
 }
 
+const joinFormOptionsV1 = {
+  "lookingFor": {
+    "label": "Looking For",
+    "symbols": ["Gigs", "Job", "Partnerships", "Talent", "Warm Intros"]
+  },
+  "canHelpWith": {
+    "label": "Can Help With",
+    "symbols": ["Development", "Tokenomics", "Design", "Ideation", "Job/Gig Opportunities", "GTM", "Testing", "Mentorship", "Fundraise", "Introductions"]
+  },
+  "expertise": {
+    "label": "Expertise",
+    "symbols": ["Frames", "Full Stack", "Backend", "Frontend", "Design", "Data Analysis", "Smart Contracts", "Community", "Consumer Tech", "Social"]
+  }
+}
+
 server.use(express.urlencoded({ extended: true }))
 server.set('views', path.join(__dirname, 'views'));
 server.set('view engine', 'ejs');
 server.use(express.static(path.join(__dirname, 'public')))
 
 server.get("/", (req, res) => {
-  res.render('pages/index', { address: address, appHandle: appHandle })
+  res.render('pages/index')
 });
 
 server.get("/home", (req, res) => {
-  res.render('pages/index', { address: address, appHandle: appHandle })
+  res.render('pages/index')
 });
 
 server.get("/app", (req, res) => {
-  res.render('pages/app', { broker: broker, address: address })
+  res.render('pages/app', { brokerDID: brokerDID })
 });
 
 // Community Join link: community/{accountDID}/join?name=decentralised.co
@@ -164,7 +185,7 @@ server.get("/auto_follow_landing", (req,res) => {
 
 // Community join form: community/{accountDID}/form?name=decentralised.co
 server.get("/community/:accountDID/form", (req, res) => {
-  res.render('pages/join_form', { communityDID: req.params.accountDID, communityName: req.query.name, options: JSON.stringify(joinFormOptions[req.params.accountDID] || {}) })
+  res.render('pages/join_form', { communityDID: req.params.accountDID, communityName: req.query.name, options: joinFormOptionsV1 })
 });
 
 server.get("/directory/:accountDID", (req, res) => {
