@@ -14,6 +14,7 @@
         justify-content: center;
         min-height: 100vh;
         padding: 2rem;
+        max-width: 100%;
       }
       #welcomeMessage {
         font-size: 2.5rem;
@@ -154,10 +155,10 @@
 
               communityContainer.addEventListener('click', () => {
           const modal = document.getElementById('community_modal');
-          const modalImage = document.getElementById('modalImage');
+          // const modalImage = document.getElementById('modalImage');
           const modalCommunityName = document.getElementById('modalCommunityName');
 
-          modalImage.src = contact.PHOTO || 'https://via.placeholder.com/50';
+          // modalImage.src = contact.PHOTO || 'https://via.placeholder.com/50';
           modalCommunityName.textContent = contact.FN;
           modal.showModal();
         });
@@ -192,14 +193,16 @@
       </div>
       <dialog id="community_modal" class="modal">
         <div class="modal-box flex flex-col items-center">
-          <div class="flex text-center mb-4">
-            <img id="modalImage" src="" alt="Community Image" class="mx-auto mb-2">
-            <h2 id="modalCommunityName" class="text-xl font-bold"></h2>
-            <button class="btn btn-ghost"  onclick="event.preventDefault(); community_modal.close();"
+          <div class="flex w-full justify-end h-4">
+            <button class="btn btn-sm btn-ghost"  onclick="event.preventDefault(); community_modal.close();">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><g fill="currentColor"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8L4.646 5.354a.5.5 0 0 1 0-.708z"/></g></svg>
             </button>
+            </div>
+          <div class="flex text-center mb-4">
+            <!-- //<img id="modalImage" src="" alt="Community Image" class="mx-auto mb-2"> -->
+            <h2 id="modalCommunityName" class="text-xl font-bold"></h2>
           </div>
-          <div class="modal-action mt-auto flex justify-between w-full">
+        <div class="modal-action mt-auto flex justify-between w-full">
             <button onclick="followRandom()" class="btn btn-outline btn-sm">Follow any 3 people</button>
             <button onclick="followAll()" class="btn btn-outline btn-sm">Follow All</button>
           </div>
