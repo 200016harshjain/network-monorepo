@@ -1,3 +1,6 @@
+import Ajv, { JSONSchemaType } from 'ajv';
+import { Profile } from '../profiles/profile';
+
 const PRODIDs = {
   "APPLE": "APPLE",
   "GOOGLE": "GOOGLE",
@@ -66,14 +69,36 @@ export class Person {
   sharedFiles(){
     if (this.XML) {
       return Object.fromEntries(this.XML.split('|').map(pair => {
-        const [key, value] = pair.split(':');
-        return [key, value.split('.').pop() || ''];
+        const lastColonIndex = pair.lastIndexOf(':');
+        if (lastColonIndex === -1) {
+          // If there's no colon, return the whole pair as key with empty value
+          return [pair, ''];
+        }
+        const filename = pair.slice(0, lastColonIndex);
+        const value = pair.slice(lastColonIndex + 1).split('.').pop();
+        return [filename, value]
       }))
     } else { return {} }
   }
 
   isCommunity(): boolean{
     return this.sharedFiles().hasOwnProperty('members.json')
+  }
+
+  async validateProfileForCommunity(agent: any, schema: JSONSchemaType<any>, head: string): Promise<boolean>{
+    const validator = new Ajv();
+    const validate = validator.compile(schema);
+
+    const communityDID = await agent.accountDID()
+
+    if (this.sharedFiles().hasOwnProperty(`${communityDID}.json`)) {
+      const profile = await agent.readPrivateFileByPointer(head, this.sharedFiles()[`${communityDID}.json`], 'base64url')
+      const valid = validate(profile)
+      if (!valid) { console.log(validate.errors) }
+      return valid
+    }
+
+    return false
   }
 
   async getMembers(agent){
@@ -98,13 +123,14 @@ export class Person {
   async fetchProfilesWithPool(people: Person[], agent: any, poolSize: number = 10): Promise<any[]> {
     const results: any[] = [];
     let index = 0;
+    const communityDID = this.accountDID()
 
     async function fetchProfile(person: Person): Promise<any> {
       if (index >= people.length) return null;
 
       const p = people[index++];
       const result = await Promise.race([
-        p.getProfile(agent),
+        p.getProfile(agent, communityDID),
         new Promise((resolve) => setTimeout(() => resolve(undefined), 10000))
       ]);
 
@@ -118,7 +144,20 @@ export class Person {
     return results;
   }
 
-  async getProfile(agent) {
+  async getProfile(agent, communityDID) {
+    if (this.sharedFiles().hasOwnProperty(`${communityDID}.json`) == true ) {
+      if (this.cache.profile) { return this.cache.profile }
+      this.cache.profile = await agent.readSharedFile(this.accountDID(), this.sharedFiles()[`${communityDID}.json`], 'base64url')
+      if (Object.keys(this.cache.profile).length == 0) {
+        console.log("unable to getProfile - ", communityDID, this)
+        this.cache.profile = undefined
+        return
+      }
+
+      this.cache.profile = new Profile(this.cache.profile)
+      return this.cache.profile
+    }
+
     if (this.sharedFiles().hasOwnProperty('profile.json') != true ) {
       console.log("skip getProfile - no profile.json", this)
       return {}
@@ -129,8 +168,10 @@ export class Person {
     if (Object.keys(this.cache.profile).length == 0) {
       console.log("unable to getProfile", this)
       this.cache.profile = undefined
+      return
     }
 
+    this.cache.profile = Profile.createFromOldProfileJson(this.cache.profile)
     return this.cache.profile
   }
 }

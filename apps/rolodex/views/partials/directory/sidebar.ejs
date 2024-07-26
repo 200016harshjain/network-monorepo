@@ -2,90 +2,108 @@
   if (window.__TAURI__) {
     document.getElementById("google-import").style.display = "none"
   }
-  import { getProfile, v1UpdateProfile } from '/odd.js';
-  window.v1UpdateProfile = v1UpdateProfile
+  import { getProfile, updateCommunityProfile } from '/odd.js';
+  window.updateCommunityProfile = updateCommunityProfile
+  const options = JSON.parse('<%- JSON.stringify(optionsV1) %>')
+  const communityDID = '<%- communityDID %>'
+  const communityFile = JSON.parse('<%- communityFile %>')
 
-  var lFor = []
-  var cHW = []
-  var exp = []
-  getProfile().then((result) => {
-    document.getElementById("profile-name").innerHTML = result.name
-    document.getElementById("profile-handle").innerHTML = result.handle
-    document.getElementById("profile-bio").innerHTML = result.text
-    lFor = result.lookingFor
-    cHW = result.canHelpWith
-    exp = result.expertise
-    
-    const badges = [...document.querySelectorAll('#edit-badge')];
-    //Set deault color & Flips the colour of option pills and stores the resposes of respective question
-    badges.forEach((badge) => {
-      if ((result.canHelpWith).includes(badge.innerHTML) || (result.lookingFor).includes(badge.innerHTML) || (result.expertise).includes(badge.innerHTML)) {
+  const badges = [...document.querySelectorAll('#edit-badge')]
+  badges.forEach((badge) => {
+    badge.addEventListener('click', () => {
+      let isClicked = badge.getAttribute('data-is-clicked')
+      let question = badge.getAttribute('question')
+      if (isClicked === "false") {
         badge.classList.remove('badge-outline');
         badge.classList.add('badge-secondary');
         badge.setAttribute('data-is-clicked', true)
+      } else {
+        badge.classList.remove('badge-secondary');
+        badge.classList.add('badge-outline');
+        badge.setAttribute('data-is-clicked', false)
       }
-    })
-
-    badges.forEach((badge) => {
-      badge.addEventListener('click', () => {
-        let isClicked = badge.getAttribute('data-is-clicked')
-        console.log("isClicked", isClicked)
-        let question = badge.getAttribute('question')
-        console.log("question", question)
-        if (isClicked === "false") {
-          badge.classList.remove('badge-outline');
-          badge.classList.add('badge-secondary');
-          badge.setAttribute('data-is-clicked', true)
-          switch (question){
-            case 'lookingFor':
-              console.log("adding", badge.innerHTML)
-              lFor.push(badge.innerHTML)
-              break;
-            case 'canHelpWith':
-              console.log("adding", badge.innerHTML)
-              cHW.push(badge.innerHTML)
-              break;
-            case 'expertise':
-              console.log("adding", badge.innerHTML)
-              exp.push(badge.innerHTML)
-              break;
-            default:
-              console.log("Store for Question not defined")
-          }
-          console.log("On Add : ", "looking for :", lFor, "canHelpWith :", cHW, "expertise :", exp)
-        } else {
-          badge.classList.remove('badge-secondary');
-          badge.classList.add('badge-outline');
-          badge.setAttribute('data-is-clicked', false)
-          switch (question){
-            case 'lookingFor':
-              console.log("removing", badge.innerHTML)
-              lFor = lFor.filter(item => item !== badge.innerHTML)
-              break;
-            case 'canHelpWith':
-              console.log("removing", badge.innerHTML)
-              cHW = cHW.filter(item => item !== badge.innerHTML)
-              break;
-            case 'expertise':
-              console.log("removing", badge.innerHTML)
-              exp = exp.filter(item => item !== badge.innerHTML)
-              break;
-            default:
-              console.log("Store for Question not defined")
-          }
-          console.log("On remove :", "looking for :", lFor, "canHelpWith :", cHW, "expertise :", exp)
-        }
-      })
     })
   })
 
+  const updateProfileModal = function(result) {
+    document.getElementById("profile-name").innerHTML = result.name
+    document.getElementById("profile-handle").innerHTML = result.handle
+    document.getElementById("profile-bio").innerHTML = result.text
+    
+    //Set deault color & Flips the colour of option pills and stores the resposes of respective question
+    for (const key in options){
+      var badges = Array.from(document.querySelectorAll(`#edit-badge[question=${key}]`))
+      badges.forEach((badge) => {
+        if (result[key] && result[key].includes(badge.innerHTML)) {
+          badge.classList.remove('badge-outline');
+          badge.classList.add('badge-secondary');
+          badge.setAttribute('data-is-clicked', true)
+        }
+      })
+    }
+  }
+
+  window.refreshProfile = function(){
+    window.getProfile(communityDID).then((profile) => {
+
+      const farcaster = profile.socials.find((p) => p.prodid == "farcaster")
+      var result = {
+        pfpUrl: farcaster.pfpUrl,
+        handle: farcaster.username,
+        name: farcaster.displayName,
+        text: farcaster.bio
+      }
+      for (const key in options) { result[key] = profile.inputs[key] } 
+
+    document.querySelector(".avatar > div > img").src = result.pfpUrl
+    document.getElementById("handle").innerHTML = result.handle
+    document.getElementById("name").innerHTML = "Name: " + result.name
+
+    for (const key in options) {
+      if (!result[key]) continue;
+      document.getElementById(key).innerHTML = '';
+      for (let values of result[key]) {
+        if (values == '') continue;
+        document.getElementById(key).innerHTML += `<span class="badge badge-md badge-secondary">${values}</span>`;
+      }
+    }
+    updateProfileModal(result)
+  })}
+  refreshProfile();
+  
   window.updateSelectedTagsToProfile = async function(){
-    await v1UpdateProfile({lookingFor: lFor, canHelpWith: cHW, expertise: exp})
-    console.log("Profile after update :", await getProfile())
+    var params = {}
+    for (const key in options) {
+      params[key] = Array.from(document.querySelectorAll(`#edit-badge[question=${key}][data-is-clicked="true"]`)).map( e => e.innerHTML)
+    }
+    await updateCommunityProfile(params, communityDID, communityFile.profileSchema)
+  }
+
+  window.refreshSyncStatus = function() {
+    window.shovel.agent.syncStatus().then((s) => {
+      if (s == false) {
+        document.getElementById("avatar").classList.remove('online');
+        document.getElementById("avatar").classList.add('offline');
+      } else if (s == true) {
+        document.getElementById("avatar").classList.add('online');
+        document.getElementById("avatar").classList.remove('offline');
+      }
+    })
+    setTimeout(refreshSyncStatus, 10000);
+  }
+  setTimeout(refreshSyncStatus, 3000);
+
+  window.syncButton = async function() {
+    window.shovel.agent.syncStatus().then((s) => {
+      console.log("sync status", s)
+      if (s == false) {
+        window.shovel.agent.push()
+      }
+    })
   }
 </script>
 
-<div class="max-md:flex max-md:justify-center max-md:items-center avatar online placeholder max-md:mx-20">    
+<div  id="avatar" class="max-md:flex max-md:justify-center max-md:items-center avatar online placeholder max-md:mx-20">    
   <div class="bg-neutral-focus rounded-full w-32">
     <img src=""/>
   </div>
@@ -98,14 +116,18 @@
 </div>
 
 <div id="name" class="py-1 text-left"></div>
-<div class="text-left">Looking For :</br><span class="space-x-1 space-y-1 py-1" id="lookingFor"></span></div>
-<div class="text-left">Can Help With :</br><span class="space-x-1 space-y-1 py-1" id="canHelpWith"></span></div>
-<div class="text-left">Expertise :</br><span class="space-x-1 space-y-1 py-1" id="expertise"></span></div>
+<% for (const key in optionsV1) {%>
+  <div class="text-left"><%= optionsV1[key]["label"] %> :</br><span class="space-x-1 space-y-1 py-1" id="<%= key %>"></span></div>
+<% }%>
 
 <div class="max-md:pt-2 md:absolute md:inset-x-0 md:bottom-0 md:pb-4 md:flex md:flex-col md:space-y-2 md:items-center">
   <button id="profile-edit-btn" class="btn max-md:my-1 btn-outline max-md:w-5/6 md:btn-sm md:w-2/3" onclick="profile_edit_modal.showModal()">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"> <path fill="currentColor" d="m13.498.795l.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001zm-.644.766a.5.5 0 0 0-.707 0L1.95 11.756l-.764 3.057l3.057-.764L14.44 3.854a.5.5 0 0 0 0-.708l-1.585-1.585z" /></svg>
     Edit Profile
+  </button>
+  <button id="sync-btn" class="btn max-md:my-1 btn-outline max-md:w-5/6 md:btn-sm md:w-2/3" onclick="syncButton()">
+    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M4 20v-2h2.75l-.4-.35q-1.225-1.225-1.787-2.662T4 12.05q0-2.775 1.663-4.937T10 4.25v2.1Q8.2 7 7.1 8.563T6 12.05q0 1.125.425 2.188T7.75 16.2l.25.25V14h2v6zm10-.25v-2.1q1.8-.65 2.9-2.212T18 11.95q0-1.125-.425-2.187T16.25 7.8L16 7.55V10h-2V4h6v2h-2.75l.4.35q1.225 1.225 1.788 2.663T20 11.95q0 2.775-1.662 4.938T14 19.75"/></svg>
+    Sync
   </button>
   <button class="btn max-md:my-1 btn-outline max-md:w-5/6 md:btn-sm md:w-2/3" onclick="logout_modal.showModal()">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path fill="currentColor" d="M11 1a2 2 0 0 0-2 2v4a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h5V3a3 3 0 0 1 6 0v4a.5.5 0 0 1-1 0V3a2 2 0 0 0-2-2zM3 8a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1H3z" /></svg>
@@ -127,24 +149,14 @@
         
         <div class="divider py-2"></div>
         
-        <div>
-          <div>Looking For</div>
-          <% for(var i=0; i<JSON.parse(options).lookingFor.length; i++) {%>
-            <div id="edit-badge" class="badge badge-md badge-outline cursor-pointer" data-is-clicked="false" question="lookingFor"><%= JSON.parse(options).lookingFor[i] %></div>
-          <% } %>
-        </div>
-        <div>
-         <div>Can Help With</div>
-          <% for(var i=0; i<JSON.parse(options).canHelpWith.length; i++) {%>
-            <div id="edit-badge" class="badge badge-md badge-outline cursor-pointer" data-is-clicked="false" question="canHelpWith"><%= JSON.parse(options).canHelpWith[i] %></div>
-          <% } %>
-        </div>
-        <div>
-          <div>Expertise</div>
-          <% for(var i=0; i<JSON.parse(options).expertise.length; i++) {%>
-            <div id="edit-badge" class="badge badge-md badge-outline cursor-pointer" data-is-clicked="false" question="expertise"><%= JSON.parse(options).expertise[i] %></div>
-          <% } %>
-        </div>
+        <% for (const key in optionsV1) {%>
+          <div class="space-y-2">
+            <div class="font-semibold text-md"><%= optionsV1[key]["label"] %></div>
+            <% for(var i=0; i<optionsV1[key]["symbols"].length; i++) {%>
+              <div id="edit-badge" class="badge badge-lg badge-outline cursor-pointer" data-is-clicked="false" question="<%= key %>"><%= optionsV1[key]["symbols"][i] %></div>
+            <% } %>
+          </div> 
+        <% }%>
         
         <div class="flex flex-row space-x-2 pt-4 justify-center">
           <button type="submit" class="btn btn-outline btn-sm">

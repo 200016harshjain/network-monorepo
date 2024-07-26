@@ -1,7 +1,7 @@
 import { PeopleRepository } from "./repository/people/people.ts";
 import { PeopleSearch } from "./repository/people/search.js";
 import { Person } from "./repository/people/person.ts";
-import { ProfileRepository } from "./repository/profile/profile.js";
+import { ProfileRepository } from "./repository/profiles/profiles.js";
 import { MembersRepository } from "./repository/members/members.js";
 import { CommunityRepository } from "./repository/members/community.ts";
 
@@ -45,7 +45,7 @@ export class AccountV1 {
   // recovery - not needed for facaster login
 
   async requestHandshake(accountDID, brokerDID = null) {
-    let person = await this.repositories.profile.contactForHandshake()
+    let person = await this.repositories.profile.contactForHandshake(accountDID)
     console.log("person with XML :", person)
 
     let requester
@@ -59,15 +59,37 @@ export class AccountV1 {
       requester = await this.agent.actAsJoinRequester(address, accountDID)
     }
     
-    requester.challenge = function () { return { person: person } }
+    const head = await this.agent.head()
+    requester.challenge = function () { return { person: person, head: head } }
 
+    let handshakeSuccess = false
+    let shouldWeWait = true
     requester.notification.addEventListener("CONFIRMED", async (event) => {
       let person = event.detail.data.person
       let result = await this.repositories.people.create(new Person(person))
       console.log("community added to contacts :", result)
+      shouldWeWait = false
+      handshakeSuccess = true
+    })
+
+    requester.notification.addEventListener("REJECTED", async (event) => {
+      shouldWeWait = false
     })
 
     await requester.initiate()
+
+    await new Promise((resolve) => {
+      const checkFlag = () => {
+        if (!shouldWeWait) {
+          resolve();
+        } else {
+          setTimeout(checkFlag, 100); // Check every 100ms
+        }
+      };
+      checkFlag();
+    });
+
+    return handshakeSuccess
   }
 
   async handshakeApprover(brokerDID) {
@@ -95,8 +117,8 @@ export class AccountV1 {
     return await this.ps.search(params)
   }
 
-  async getProfile(){
-    return await this.repositories.profile.get()
+  async getProfile(communityDID = null){
+    return await this.repositories.profile.get(communityDID)
   }
 
   async editProfile(params){

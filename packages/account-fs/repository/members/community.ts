@@ -15,50 +15,117 @@ export class CommunityRepository {
 
   async initialise(): Promise<void> {}
 
-  // VCard style fields with Avro style schemas
-  sample(): any {
-    return {
+  // VCard style fields with JSON schemas for Profile
+  sample(communityDID): any {
+    var communityFile: any = {
       FN: "Creole",
-      schemas: [
-        {
-          type: "record",
-          name: "farcasterProfile",
-          fields: [
-            { name: "fid", type: "string" },
-            { name: "username", type: "string" },
-            { name: "bio", type: "string" },
-            { name: "displayName", type: "string" },
-            { name: "pfpUrl", type: "string" },
-          ]
-        },
-        {
-          type: "enum",
-          name: "lookingForOptions",
-          symbols: ["Gigs", "Job", "Partnerships", "Talent", "Warm Intros"]
-        },
-        {
-          type: "enum",
-          name: "canHelpWithOptions",
-          symbols: ["Development", "Tokenomics", "Design", "Ideation", "Job/Gig Opportunities", "GTM", "Testing", "Mentorship", "Fundraise", "Introductions"],
-        },
-        {
-          type: "enum",
-          name: "expertiseOptions",
-          symbols: ["Frames", "Full Stack", "Backend", "Frontend", "Design", "Data Analysis", "Smart Contracts", "Community", "Consumer Tech", "Social"]
-        },
-        {
-          type: "record",
-          name: "profile",
-          fields: [
-            { name: "socials", type: { type: "map", values: ["farcasterProfile"] } },
-            { name: "files", type: { type: "array", items: "string" } },
-            { name: "lookingFor", type: { type: "array", items: "lookingForOptions" } },
-            { name: "canHelpWith", type: { type: "array", items: "canHelpWithOptions" } },
-            { name: "expertise", type: { type: "array", items: "expertiseOptions" } }
-          ]
+      profileSchema: {
+        "type": "object",
+        "required": ["inputs", "version", "socials"],
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "properties": {
+              "lookingFor": {
+                "title": "Looking For",
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "enum": ["Gigs", "Job", "Partnerships", "Talent", "Warm Intros"]
+                }
+              },
+              "canHelpWith": {
+                "title": "Can Help With",
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "enum": ["Development", "Tokenomics", "Design", "Ideation", "Job/Gig Opportunities", "GTM", "Testing", "Mentorship", "Fundraise", "Introductions"]
+                }
+              },
+              "expertise": {
+                "title": "Expertise",
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "enum": ["Frames", "Full Stack", "Backend", "Frontend", "Design", "Data Analysis", "Smart Contracts", "Community", "Consumer Tech", "Social"]
+                }
+              }
+            }
+          },
+          "socials": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "$id": "farcaster",
+                  "properties": {
+                    "prodid": { "type": "string" },
+                    "fid": { "type": "string" },
+                    "displayName": { "type": "string" },
+                    "username": { "type": "string" },
+                    "bio": { "type": "string" },
+                    "pfpUrl": { "type": "string" }
+                  }
+                },
+                {
+                  "type": "object",
+                  "$id": "LinkedIn",
+                  "properties": {
+                    "prodid": { "type": "string" },
+                    "school": { "type": "string" } 
+                  }
+                }
+              ]
+            }
+          },
+          "version": { "type": "number" }
         }
-      ]
+      }
     };
+
+    if (communityDID == "did:pkh:eip155:8453:0xf5a4c46FE6Cd432bb41C10827C31D32c7Ef30aC4") {
+      communityFile.FN = "TokyoDAO"
+      communityFile.profileSchema.properties.inputs.properties = {
+        "location": {
+          "title": "Location",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "Japan", "North America", "Europe", "South America", "Africa", "Australia",
+              "India", "China", "South Korea", "Hong Kong", "Taiwan", "Malaysia", "Indonesia",
+              "Thailand", "Singapore", "Philippines", "Other Asia", "Middle East"
+            ]
+          }
+        },
+        "expertise": {
+          "title": "Expertise",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["Design", "Community Building", "Strategy", "Tokenomics", "Engineering", "Fundraising", "Admin/Operations", "GTM"]
+          },
+        },
+        "lookingFor": {
+          "title": "Looking For",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["Events (Online)", "Events (Offline)", "Networking", "Product Building", "Partnerships", "Member recruitment", "Art and Design"]
+          }
+        }
+      }
+    }
+
+    return communityFile
   }
 
   async upsert(data: any): Promise<void> {
@@ -86,10 +153,3 @@ export class CommunityRepository {
     }
   }
 }
-
-// exchange file on handshake
-// user's profile based on community schema
-  // render user profile
-// render join form
-// render directory table
-// search matchers to use schema fields

@@ -98,8 +98,8 @@ async function filterMembers(filter, profiles, communityUID) {
   return await account.search({query: filter, personUID: communityUID})
 }
 
-async function getProfile() {
-  return account.getProfile()
+async function getProfile(communityDID = null) {
+  return account.getProfile(communityDID)
 }
 
 async function getContacts() {
@@ -122,7 +122,12 @@ async function updateProfile(handle, name, tags = [], text = '') {
 }
 
 //updates given params with new values while keeping rest of the keys in Profile Object the same
-async function v1UpdateProfile(params) {
+async function updateCommunityProfile(inputs, communityDID, profileSchema) {
+  return await accountv1.repositories.profile.updateCommunityProfile(communityDID, profileSchema, inputs)
+}
+
+async function createCommunityProfile(params, communityDID, profileSchema) {
+  await accountv1.repositories.profile.createCommunityProfile(communityDID, profileSchema, params)
   return await accountv1.repositories.profile.set(params)
 }
 
@@ -321,7 +326,8 @@ export {
   getNonce,
   verifySiweMessage,
   ethereumSignup,
-  v1UpdateProfile,
+  updateCommunityProfile,
+  createCommunityProfile,
   getMembers,
   getCommunityMembers,
   filterMembers,
