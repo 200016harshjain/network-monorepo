@@ -207,10 +207,10 @@ server.get("/farcaster-following/:fid", async (req,res)  => {
   }
 });
 
-server.post("/farcaster-follow-users/", async (req, res) => {
+server.post("/farcaster-follow-users/", express.json, async (req, res) => {
   try {
       const { signerUuid, targetFids } = req.body;
-      const response = await client.followUser(signerUuid, targetFids);
+      const response = await client.followUser(signerUuid,targetFids);
       res.status(200).json(response);
   }
   catch (error) {

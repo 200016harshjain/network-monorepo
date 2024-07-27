@@ -49,7 +49,7 @@ async function ethereumSignup(accountDID,siweMessage, siweSignature, profileData
 
 async function getFollowingOfAParticularUser(userFid) {
   try {
-    const response = await axios.get(`/farcaster-following/${userFid}`);
+    const response = await axios_client.get(`/farcaster-following/${userFid}`);
      return response.data;
   } catch (error) {
     console.error('Error fetching followers:', error);
@@ -59,10 +59,11 @@ async function getFollowingOfAParticularUser(userFid) {
 
 async function followFarcasterUsersBasedOnFID(signerUuid, targetFids) {
   try {
-    const response = await axios.post('/farcaster-follow-users/', {
+    const data = {
       signerUuid: signerUuid,
       targetFids: targetFids
-    });
+    };
+    const response = await axios_client.post('/farcaster-follow-users/',data);
     return response.data;
   } catch (error) {
     console.error('Error following Farcaster users:', error);
@@ -360,6 +361,7 @@ export {
   filterMembers,
   getFidFromAccountDID,
   uint8arrays,
-  getFollowingOfAParticularUser
+  getFollowingOfAParticularUser,
+  followFarcasterUsersBasedOnFID
   
 };
