@@ -109,11 +109,21 @@
       window.followRandom = function() {
         console.log('Following 3 random people');
         // Implement the logic to follow 3 random people
+        community_modal.close()
       }
 
       window.followAll = function() {
         console.log('Following all people');
         // Implement the logic to follow all people
+        community_modal.close()
+      }
+
+      window.shuffleArray = function(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
       }
 
      
@@ -137,6 +147,8 @@
       }
       
      
+
+
       window.refreshContacts = async function(){
         const communityList = document.getElementById('communityList');
         const notFollowedList = document.getElementById('notFollowedList');
@@ -174,21 +186,27 @@
               const modalCommunityDetails = document.getElementById('modalCommunityDetails');
               let listOfCommunityMembersNotFollowed = communityMemberDataFromMap.filter(member => Array.isArray(member) && !listOfAccountsUserIsFollowing.includes(member[0]) && member[0] !== userFID);
               modalCommunityDetails.textContent = `You follow ${communityMemberDataFromMap.length-listOfCommunityMembersNotFollowed.length}  out of ${communityMemberDataFromMap.length} members from ${communityName}`;
-              
               notFollowedList.innerHTML = '';
 
-              // Populate notFollowedList
-                listOfCommunityMembersNotFollowed.forEach((member) => {
+           
+              shuffleArray(listOfCommunityMembersNotFollowed).forEach((member) => {
                   const memberItem = document.createElement('div');
                   memberItem.className = 'list-item';
-                  memberItem.innerHTML = `<div class="avatar"><div class="w-8 rounded-full"><img src="${member[2]}" onerror="this.onerror=null;this.src='https://i.imgur.com/tmGAd6X.jpg';"/></div></div> <span class="text-center">${member[1]}</span> <a href="https://warpcast.com/${member[1]}" target="_blank"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M18.24.24H5.76A5.76 5.76 0 0 0 0 6v12a5.76 5.76 0 0 0 5.76 5.76h12.48A5.76 5.76 0 0 0 24 18V6A5.76 5.76 0 0 0 18.24.24m.816 17.166v.504a.49.49 0 0 1 .543.48v.568h-5.143v-.569A.49.49 0 0 1 15 17.91v-.504c0-.22.153-.402.358-.458l-.01-4.364c-.158-1.737-1.64-3.098-3.443-3.098c-1.804 0-3.285 1.361-3.443 3.098l-.01 4.358c.228.042.532.208.54.464v.504a.49.49 0 0 1 .543.48v.568H4.392v-.569a.49.49 0 0 1 .543-.479v-.504c0-.253.201-.454.454-.472V9.039h-.49l-.61-2.031H6.93V5.042h9.95v1.966h2.822l-.61 2.03h-.49v7.896c.252.017.453.22.453.472"/></svg></a>`;
+                  memberItem.innerHTML = `<div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                  <div class="avatar" style="margin-right: 10px;">
+                  <div class="w-8 rounded-full">
+                    <img src="${member[2]}" onerror="this.onerror=null;this.src='https://i.imgur.com/tmGAd6X.jpg';"/>
+                  </div></div> 
+                  <span class="text-center" style="margin-right: 10px;">${member[1]}</span> 
+                  <a href="https://warpcast.com/${member[1]}" target="_blank" style="margin-left: auto;"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M18.24.24H5.76A5.76 5.76 0 0 0 0 6v12a5.76 5.76 0 0 0 5.76 5.76h12.48A5.76 5.76 0 0 0 24 18V6A5.76 5.76 0 0 0 18.24.24m.816 17.166v.504a.49.49 0 0 1 .543.48v.568h-5.143v-.569A.49.49 0 0 1 15 17.91v-.504c0-.22.153-.402.358-.458l-.01-4.364c-.158-1.737-1.64-3.098-3.443-3.098c-1.804 0-3.285 1.361-3.443 3.098l-.01 4.358c.228.042.532.208.54.464v.504a.49.49 0 0 1 .543.48v.568H4.392v-.569a.49.49 0 0 1 .543-.479v-.504c0-.253.201-.454.454-.472V9.039h-.49l-.61-2.031H6.93V5.042h9.95v1.966h2.822l-.61 2.03h-.49v7.896c.252.017.453.22.453.472"/></svg></a>
+                  </div>`;
                   notFollowedList.appendChild(memberItem);
-                });
+                 });
               modal.showModal();
-        });
-              getListOfFidFromCommunityContact(contact);
+            });
+            getListOfFidFromCommunityContact(contact);
             }
-          });
+        });
           updateCommunityCount();
         });
       }
@@ -213,7 +231,7 @@
             <h2 id="modalCommunityDetails" class="text-xl font-bold"></h2>
             <h2 class="text-xl font-bold">Here's a list of people you can follow:</h2>
           </div>
-          <div id="notFollowedList"></div>
+          <div id="notFollowedList" class="w-full"></div>
         <div class="modal-action  flex justify-between w-full mt-2">
             <button onclick="followRandom()" class="btn btn-outline btn-sm">Follow any 3 people</button>
             <button onclick="followAll()" class="btn btn-outline btn-sm">Follow All</button>

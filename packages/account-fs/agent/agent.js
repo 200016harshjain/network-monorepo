@@ -183,6 +183,7 @@ export const AccountCapability = {
         console.error('Error fetching FID:', error);
         throw error;
     }
+  }
 }
 
 export const StorageCapability = {
