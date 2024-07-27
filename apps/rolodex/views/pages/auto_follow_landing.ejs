@@ -81,20 +81,20 @@
       window.appleCredsPresent = appleCredsPresent;
       window.getMembers = getMembers;
       window.uint8arrays = uint8arrays;
+      window.getFidFromAccountDID = getFidFromAccountDID;
       var farcasterHandle;
       let communityMap = new Map();
       let communityCount = 0;
       var listOfAccountsUserIsFollowing = [];
       var listOfCommunityMembersNotFollowed = [];
-      var userFID;
+    
       var signerUuid = '1cbf93b0-b0ae-407b-a018-070770be285b';
-
+      var userFID = await window.getFidFromAccountDID(await shovel.agent.accountDID())
+      userFID = userFID.split('@')[0];
       window.getListOfAccountsUserIsFollowing = async function() {
-        let fid = await getFidFromAccountDID(await shovel.agent.accountDID());
-        userFID = fid.split('@')[0];
-        listOfAccountsUserIsFollowing = await getFollowingOfAParticularUser(userFID);
+       listOfAccountsUserIsFollowing = await getFollowingOfAParticularUser(userFID);
       }
-      getListOfAccountsUserIsFollowing(); 
+     
 
       window.refreshProfile = function(){
         window.getProfile().then((result) => {
@@ -156,8 +156,7 @@
             for (let member of communityMembers) {
              communityUserDataArray.push([member.socials[0].fid, member.socials[0].username , member.socials[0].pfpUrl]); 
             }
-            let listOfCommunityMembersNotFollowed = communityUserDataArray.filter(member => Array.isArray(member) && !listOfAccountsUserIsFollowing.includes(member[0]) && member[0] !== userFID);
-            communityMap.set(communityContact.FN, {allMembers: communityUserDataArray,notFollowedMembers: listOfCommunityMembersNotFollowed });
+            communityMap.set(communityContact.FN, {allMembers: communityUserDataArray });
          }
       }
       
@@ -195,10 +194,14 @@
               communityContainer.appendChild(communityInfo);
               communityList.appendChild(communityContainer);
 
-              communityContainer.addEventListener('click', () => {
+              communityContainer.addEventListener('click', async () => {
+
+              await getListOfAccountsUserIsFollowing();
               const modal = document.getElementById('community_modal');
               let communityData =  communityMap.get(communityName)
-              console.log('map', communityData);
+              let listOfCommunityMembersNotFollowed = communityData.allMembers.filter(member => Array.isArray(member) && !listOfAccountsUserIsFollowing.includes(member[0]) && member[0] !== userFID);
+              communityData.notFollowedMembers = listOfCommunityMembersNotFollowed;
+              communityMap.set(communityName, communityData);
               const modalCommunityDetails = document.getElementById('modalCommunityDetails');
               modalCommunityDetails.textContent = `You follow ${communityData.allMembers.length-communityData.notFollowedMembers.length}  out of ${communityData.allMembers.length} members from ${communityName}`;
               notFollowedList.innerHTML = '';
@@ -224,7 +227,6 @@
 
                 followRandomButton.onclick = () => followRandom(communityData.notFollowedMembers);
                 followAllButton.onclick = () => followAll(communityData.allMembers);
-             
                 modal.showModal();
             });
             getListOfFidFromCommunityContact(contact);
