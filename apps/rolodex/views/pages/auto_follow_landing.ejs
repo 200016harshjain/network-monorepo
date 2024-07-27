@@ -94,8 +94,7 @@
         userFID = fid.split('@')[0];
         console.log("user fid is",userFID);
         //make the api call to farcaster using the userFID
-        listOfAccountsUserIsFollowing.push(""); //rishi, prashant 
-        //11555,
+        listOfAccountsUserIsFollowing.push("11555"); //rishi, prashant 
       }
       getListOfAccountsUserIsFollowing(); 
       window.refreshProfile = function(){
@@ -128,17 +127,15 @@
          var communityDID = communityContact.UID;
          let community = await getContactByUID(communityDID);
          let communityMembers = await getCommunityMembers(community);
-        if (community.cache) {
-          let communityUserDataArray = [];
-          for (let member of community.cache.people) {
-              let uid = member.UID;
-              let fid = await getFidFromAccountDID(uid.slice(4)); //remove DCN 
-              communityUserDataArray.push([fid.split('@')[0], member.cache.profile.handle, member.cache.profile.pfpUrl, null]); // get '123' from '123@farcaster'
-          }
-          communityMap.set(communityContact.FN, communityUserDataArray);
-        }
-        console.log("map", communityMap);
+         if (communityMembers) {
+            let communityUserDataArray = [];
+            for (let member of communityMembers) {
+             communityUserDataArray.push([member.socials[0].fid, member.socials[0].username , member.socials[0].pfpUrl, null]); 
+            }
+            communityMap.set(communityContact.FN, communityUserDataArray);
+         }
       }
+      
      
       window.refreshContacts = async function(){
         const communityList = document.getElementById('communityList');
@@ -176,7 +173,6 @@
               let communityMemberDataFromMap =  communityMap.get(communityName)
               const modalCommunityDetails = document.getElementById('modalCommunityDetails');
               let listOfCommunityMembersNotFollowed = communityMemberDataFromMap.filter(member => Array.isArray(member) && !listOfAccountsUserIsFollowing.includes(member[0]) && member[0] !== userFID);
-              console.log("listOfCommunityMembersNotFollowed", listOfCommunityMembersNotFollowed);
               modalCommunityDetails.textContent = `You follow ${communityMemberDataFromMap.length-listOfCommunityMembersNotFollowed.length}  out of ${communityMemberDataFromMap.length} members from ${communityName}`;
               
               notFollowedList.innerHTML = '';
@@ -190,11 +186,9 @@
                 });
               modal.showModal();
         });
-
               getListOfFidFromCommunityContact(contact);
             }
           });
-
           updateCommunityCount();
         });
       }

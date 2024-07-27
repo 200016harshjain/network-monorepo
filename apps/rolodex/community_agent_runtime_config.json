@@ -1,6 +1,10 @@
 {
   "did:pkh:eip155:1:0x5710446fE89a53F229b15190528273B2c6813369": {
     "SHOVEL_ACCOUNT_HANDLE":"FBI",
+    "SHOVEL_AGENT_SIWE": {
+      "message":"localhost:4000 wants you to sign in with your Ethereum account:\n0x9209C02c5DaC471CB4aaE58dc4B8008662E27039\n\nSign in via ethereum\n\nURI: http://localhost:4000\nVersion: 1\nChain ID: 8453\nNonce: qxSyIBXQNwwRb4kDm\nIssued At: 2024-07-26T14:36:01.427Z\nRequest ID: did:key:z4MXj1wBzi9jUstyNbAPFCAxE39vdWtYopKkfSxQh8q67Dk57WtrDNnZqc9u8aFjvAXPNp4bJtfxrDDCnSFEv3Y23Cz79cm3eyzAGZZthVQzBJQtrzgKhTEE3kgtVjf4t7ZU5Miu1xghnVJMXp4Sno7VnhPYk7WWjrCUiDTDijv8FCjUaRkDYWwwH54ko9yEpxfN3UWW2RVQCTFNA9BrU3fCzGHtppCqFVST8HVqp33Uy92SdUS9m13owY6mWoQmTYD1Pu6o5mKLeDgqxiRC7u2LtqWqki1fcTX5RsbfDuZw1xL5TgHsDdCust1XWkwjKjfkdraTfnSR7rdNxmas1MPmnUjpp9f5RTKB9LAXJ7twx699MwLmn",
+      "signature":"0x0a381ddb45caef41c8b11c65e9a5692c5af2b21931a2037e49b330bcf7d8f06a55723afefa683df02e2d3efb79e3a9c49ae264a20dd1ae9776c18de0b79dfc581c"
+    },
     "SHOVEL_AGENT_WRITE_KEYPAIR":{
       "alg": "RS256",
       "d": "Nr03IdtvFSHI_OL5nN2HCHbbXz1JLqpKezUzi_yEgve7yaowR-d8csmuVp3efo_JmK0K2a0nLM234-HL3JwuFhY3A7L1SbIq4nsJ3JXwmmZ65fHrtfEnckJcXm4cvOu1tHDHM6vTSyCpRnioXqDK_g9f3MB3rm3qdxI1zrAB0dMJ_yY3t4LH7PmVps3EtBR0YN6_bWgYmuTKoCpHA4yhQj7-JuTU9WWX5iOrJoBKQlkkCYhi8R48MkUIrgnQ9ff55UcvvO1952e1LF-sANTMDgb9qRGJpEIrJVGmlwGZ5Eqm2AxBZLZ0kMJTMpk5LcH9fg0qX15sqh889QbojHEwoQ",
