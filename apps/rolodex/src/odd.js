@@ -10,6 +10,7 @@ import { save } from '@tauri-apps/api/dialog';
 import { writeTextFile } from '@tauri-apps/api/fs';
 import { SiweMessage } from 'siwe';
 
+
 const farcasterClient = createAppClient({
   relay: 'https://relay.farcaster.xyz',
   ethereum: viemConnector(),
@@ -45,6 +46,32 @@ async function ethereumSignup(accountDID,siweMessage, siweSignature, profileData
   await accountv1.repositories.profile.set(profileData)
   await accountv1.agent.appendName(fid, 'ethereum')
 }
+
+async function getFollowingOfAParticularUser(userFid) {
+  try {
+    const response = await axios.get(`/farcaster-following/${userFid}`);
+     return response.data;
+  } catch (error) {
+    console.error('Error fetching followers:', error);
+    throw error;
+  }
+}
+
+async function followFarcasterUsersBasedOnFID(signerUuid, targetFids) {
+  try {
+    const response = await axios.post('/farcaster-follow-users/', {
+      signerUuid: signerUuid,
+      targetFids: targetFids
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error following Farcaster users:', error);
+    throw error;
+  }
+}
+
+
+
 
 async function getNonce() {
   try {
@@ -332,5 +359,7 @@ export {
   getCommunityMembers,
   filterMembers,
   getFidFromAccountDID,
-  uint8arrays
+  uint8arrays,
+  getFollowingOfAParticularUser
+  
 };

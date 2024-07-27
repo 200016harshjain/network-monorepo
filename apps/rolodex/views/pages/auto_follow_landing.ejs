@@ -65,7 +65,7 @@
 
     <script type="module">
     import { account, portOldContacts, addContact, getContacts, getContactByUID, editContact, deleteContact, filterContacts,
-        getProfile, updateProfile, signout, importContacts, appleCredsPresent, importGoogleContacts, downloadContactsDataLocally, getMembers,getCommunityMembers, uint8arrays, getFidFromAccountDID} from '/odd.js';
+        getProfile, updateProfile, signout, importContacts, appleCredsPresent, importGoogleContacts, downloadContactsDataLocally, getMembers,getCommunityMembers, uint8arrays, getFidFromAccountDID, getFollowingOfAParticularUser} from '/odd.js';
       window.addContact = addContact;
       window.getContacts = getContacts;
       window.editContact = editContact;
@@ -87,35 +87,37 @@
       var listOfAccountsUserIsFollowing = [];
       var listOfCommunityMembersNotFollowed = [];
       var userFID;
-      var listOfFIDsToFollow = [];
-         //follow a list of accounts using listOfFIDsToFollow and userFID
+      var signerUuid = '1cbf93b0-b0ae-407b-a018-070770be285b';
+
       window.getListOfAccountsUserIsFollowing = async function() {
         let fid = await getFidFromAccountDID(await shovel.agent.accountDID());
         userFID = fid.split('@')[0];
-        console.log("user fid is",userFID);
-        //make the api call to farcaster using the userFID
-        listOfAccountsUserIsFollowing.push("11555"); //rishi, prashant 
+       // listOfAccountsUserIsFollowing = await getFollowingOfAParticularUser(userFID);
       }
       getListOfAccountsUserIsFollowing(); 
+
       window.refreshProfile = function(){
         window.getProfile().then((result) => {
-          console.log("profile is", result);
           const welcomeMessage = document.getElementById('welcomeMessage');
           welcomeMessage.textContent = `Welcome ${result.handle}`;
           welcomeMessage.style.display = 'block';
         });
       }
       refreshProfile();   
-      window.followRandom = function() {
+
+      window.followRandom = async function() {
         console.log('Following 3 random people');
-        // Implement the logic to follow 3 random people
         community_modal.close()
+        await refreshContacts();
+
       }
 
-      window.followAll = function() {
+      window.followAll = async function() {
         console.log('Following all people');
-        // Implement the logic to follow all people
+
+        //const response = followFarcasterUsersBasedOnFID(signerUuid,)
         community_modal.close()
+        await refreshContacts();
       }
 
       window.shuffleArray = function(array) {
@@ -140,8 +142,10 @@
          if (communityMembers) {
             let communityUserDataArray = [];
             for (let member of communityMembers) {
-             communityUserDataArray.push([member.socials[0].fid, member.socials[0].username , member.socials[0].pfpUrl, null]); 
+             communityUserDataArray.push([member.socials[0].fid, member.socials[0].username , member.socials[0].pfpUrl]); 
             }
+            //let listOfCommunityMembersNotFollowed = communityUserDataArray.filter(member => Array.isArray(member) && !listOfAccountsUserIsFollowing.includes(member[0]) && member[0] !== userFID);
+            //communityMap.set(communityContact.FN, {allMembers: communityUserDataArray,notFollowedMembers: listOfCommunityMembersNotFollowed });
             communityMap.set(communityContact.FN, communityUserDataArray);
          }
       }
@@ -155,6 +159,8 @@
         communityList.innerHTML = ''; // Clear existing content
 
         window.getContacts().then((result) => {
+          result.contactList.push(result.contactList[0])
+          result.contactList.push(result.contactList[1])
           result.contactList.forEach((contact) => {
             if (contact.CATEGORIES === "community") {
               communityCount++;
@@ -188,7 +194,8 @@
               modalCommunityDetails.textContent = `You follow ${communityMemberDataFromMap.length-listOfCommunityMembersNotFollowed.length}  out of ${communityMemberDataFromMap.length} members from ${communityName}`;
               notFollowedList.innerHTML = '';
 
-           
+              //we can fetch only 100 people followed by user - we may not have information about some members in the community
+              //follow all is simply all fid's in the community, follow 3 is 3 members from the 'listOfCommunityMembersNotFollowed' 
               shuffleArray(listOfCommunityMembersNotFollowed).forEach((member) => {
                   const memberItem = document.createElement('div');
                   memberItem.className = 'list-item';
