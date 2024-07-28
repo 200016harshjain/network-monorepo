@@ -165,13 +165,6 @@ server.get("/community/:accountDID/join", (req, res) => {
   res.render('pages/join', { communityDID: req.params.accountDID ,communityName: req.query.name })
 });
 
-server.get("/auto_follow_signup", (req,res) => {
-  res.render('pages/auto_follow_signup');
-});
-
-server.get("/auto_follow_landing", (req,res) => {
-  res.render('pages/auto_follow_landing');
-});
 
 
 // Community join form: community/{accountDID}/form?name=decentralised.co

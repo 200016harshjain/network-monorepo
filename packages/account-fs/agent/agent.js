@@ -174,15 +174,6 @@ export const AccountCapability = {
     // TODO when agent has storage capability check for access key
     let accessKey = await this.runtime.getItem(SHOVEL_FS_ACCESS_KEY)
     return (accessKey != null)
-  },
-    async getFID(accountDID) {
-    try {
-        const response = await this.axios_client.get('/fid', { params: { accountDID } });
-        return response.data.fid;
-    } catch (error) {
-        console.error('Error fetching FID:', error);
-        throw error;
-    }
   }
 }
 
