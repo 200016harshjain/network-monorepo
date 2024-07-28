@@ -201,7 +201,7 @@
               communityData.notFollowedMembers = listOfCommunityMembersNotFollowed;
               communityMap.set(communityName, communityData);
               const modalCommunityDetails = document.getElementById('modalCommunityDetails');
-              modalCommunityDetails.textContent = `You follow ${communityData.allMembers.length-communityData.notFollowedMembers.length}  out of ${communityData.allMembers.length} members from ${communityName}`;
+             // modalCommunityDetails.textContent = `You follow ${communityData.allMembers.length-communityData.notFollowedMembers.length}  out of ${communityData.allMembers.length} members from ${communityName}`;
               notFollowedList.innerHTML = '';
     
               shuffleArray(communityData.notFollowedMembers).forEach((member) => {
@@ -250,7 +250,7 @@
             </div>
           <div class="flex-col text-center mb-4">
             <h2 id="modalCommunityDetails" class="text-xl font-bold"></h2>
-            <h2 class="text-xl font-bold">Here's a list of people you can follow:</h2>
+            <h2 class="text-xl font-bold">Here's a list of people you can follow</h2>
           </div>
           <div id="notFollowedList" class="w-full"></div>
         <div class="modal-action  flex justify-between w-full mt-2">
