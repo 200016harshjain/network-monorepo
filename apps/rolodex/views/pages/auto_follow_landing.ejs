@@ -112,8 +112,7 @@
           }
           return member[0];
         });      
-        const response = followFarcasterUsersBasedOnFID(signerUuid,[11155,3107])
-        console.log('response-follow random', response);
+        const response = await followFarcasterUsersBasedOnFID(signerUuid,[11155,3107])
         community_modal.close()
        
 
@@ -126,8 +125,7 @@
           }
           return member[0];
         });        
-        const response = followFarcasterUsersBasedOnFID(signerUuid,targetFids)
-        console.log('response-follow all', response);
+        const response =  await followFarcasterUsersBasedOnFID(signerUuid,[11155,3107])
         community_modal.close()
       }
 
@@ -205,9 +203,7 @@
               const modalCommunityDetails = document.getElementById('modalCommunityDetails');
               modalCommunityDetails.textContent = `You follow ${communityData.allMembers.length-communityData.notFollowedMembers.length}  out of ${communityData.allMembers.length} members from ${communityName}`;
               notFollowedList.innerHTML = '';
-
-              //we can fetch only 100 people followed by user - we may not have information about some members in the community
-              //follow all is simply all fid's in the community, follow 3 is 3 members from the 'listOfCommunityMembersNotFollowed' 
+    
               shuffleArray(communityData.notFollowedMembers).forEach((member) => {
                   const memberItem = document.createElement('div');
                   memberItem.className = 'list-item';

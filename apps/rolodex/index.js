@@ -198,7 +198,7 @@ server.get('/nonce',  (req, res) => {
 
 server.get("/farcaster-following/:fid", async (req,res)  => {
   try {
-    const response = await client.fetchUserFollowing(req.params.fid, {limit:100});
+    const response = await client.fetchUserFollowing(req.params.fid, {limit:50});
     const fidArray = response.result.users.map(user => user.fid);
     res.json(fidArray);
   } catch (error) {
@@ -207,7 +207,7 @@ server.get("/farcaster-following/:fid", async (req,res)  => {
   }
 });
 
-server.post("/farcaster-follow-users/", express.json, async (req, res) => {
+server.post("/farcaster-follow-users/",express.json(),  async (req, res) => {
   try {
       const { signerUuid, targetFids } = req.body;
       const response = await client.followUser(signerUuid,targetFids);
