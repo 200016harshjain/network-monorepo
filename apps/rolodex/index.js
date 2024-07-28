@@ -7,7 +7,6 @@ import { generateNonce } from 'siwe';
 import fs from 'node:fs/promises';
 import { access, constants } from 'node:fs/promises';
 import morgan from 'morgan';
-import { NeynarAPIClient } from "@neynar/nodejs-sdk";
 
 
 const port = process.argv[2] || 3000;
@@ -20,7 +19,6 @@ const __dirname = path.dirname(__filename);
 const NETWORK = process.env.VITE_NETWORK || "DEVNET"
 const RUN_COMMUNITY_AGENT = process.env.VITE_RUN_COMMUNITY_AGENT || true
 
-const client = new NeynarAPIClient('');
 
 // TODO mount filesystem
 const helia = await createAppNode()
@@ -196,28 +194,9 @@ server.get('/nonce',  (req, res) => {
   res.status(200).json(nonce);
 });
 
-server.get("/farcaster-following/:fid", async (req,res)  => {
-  try {
-    const response = await client.fetchUserFollowing(req.params.fid, {limit:50});
-    const fidArray = response.result.users.map(user => user.fid);
-    res.json(fidArray);
-  } catch (error) {
-    console.error("Error fetching followers:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
 
-server.post("/farcaster-follow-users/",express.json(),  async (req, res) => {
-  try {
-      const { signerUuid, targetFids } = req.body;
-      const response = await client.followUser(signerUuid,targetFids);
-      res.status(200).json(response);
-  }
-  catch (error) {
-    console.error("Error following users:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
+
+
 
 server.get("/apple_contacts", async (req, res) => {
   try {

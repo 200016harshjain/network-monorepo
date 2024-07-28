@@ -229,20 +229,6 @@ server.get("/v1/accounts/:accountDID/inbox", async (req, res) => {
 });
 
 
-  server.get("/fid", async (req, res) => {
-    const accountDID = req.query.accountDID;
-    if (!accountDID) {
-      return res.status(400).json({ error: "accountDID is required" });
-    }
-    try {
-      const names = await accounts.getNames(accountDID);
-      res.json({ fid: names });
-    } catch (error) {
-      console.error('Error retrieving FID:', error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
 /*
   Storage APIs
 */
