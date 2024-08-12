@@ -3,11 +3,11 @@ import axios from 'axios'
 import { Broker } from './handshakes/base/broker.js';
 import { Approver } from './handshakes/base/approver.js';
 import { Requester } from './handshakes/base/requester.js';
-import { Channel } from './handshakes/base/channel.js';
 import { CID } from 'multiformats/cid'
 import { dial } from './helia_node.js'
 import { PrivateFS, PrivateFile } from "./fs/private_fs.js"
 import { HubConnection } from './hub_connection.js';
+import { SERVER_RUNTIME } from './runtime.js';
 
 const SHOVEL_FS_ACCESS_KEY = "SHOVEL_FS_ACCESS_KEY"
 const SHOVEL_ACCOUNT_HANDLE = "SHOVEL_ACCOUNT_HANDLE"
@@ -48,55 +48,11 @@ export const MessageCapability = {
       await dial(this.helia, address)
       return true
     } catch (e) {
-      console.log("Connection Failed while dialing:", address)
+      console.log("Connection Failed while dialing:", address, e)
       alert('Connection with Hub Failed. Please Relaod the Page.')
     }
 
     return false
-  },
-
-  async actAsJoinApprover(approverHandle) {
-    const channelName = `${approverHandle}-membership`
-    const channel = new Channel(this.helia, channelName)
-    this.approver.register("JOIN", channel)
-
-    await channel.subscribe(this.approver)
-  },
-
-  async actAsJoinRequester(approverHandle) {
-    const channelName = `${approverHandle}-membership`
-    const channel = new Channel(this.helia, channelName)
-    this.requester = new Requester(this, channel, "JOIN")
-
-    await channel.subscribe(this.requester)
-    return this.requester
-  },
-
-  async actAsRelationshipApprover(brokerHandle, approverHandle) {
-    let channelName = `${brokerHandle}-${approverHandle}-relationship`
-    const channel = new Channel(this.helia, channelName)
-    this.approver.register("RELATE", channel)
-
-    await channel.subscribe(this.approver)
-  },
-
-  async actAsRelationshipRequester(brokerHandle, approverHandle) {
-    let channelName = `${brokerHandle}-${approverHandle}-relationship`
-    let forwardingChannel = `${brokerHandle}-forwarding`
-    const channel = new Channel(this.helia, channelName, forwardingChannel)
-    this.requester = new Requester(this, channel, "RELATE")
-
-    await channel.subscribe(this.requester)
-    return this.requester
-  },
-
-  async actAsRelationshipBroker() {
-    const forwardingChannel = `${await this.accountDID()}-forwarding`
-
-    const channel = new Channel(this.helia, forwardingChannel)
-    this.broker = new Broker(this, channel)
-
-    await channel.subscribe(this.broker)
   }
 }
 
@@ -173,6 +129,31 @@ export const AccountCapability = {
 }
 
 export const StorageCapability = {
+  async registerAgent(accountDID, siweMessage, siweSignature) {
+    await this.runtime.setItem(SHOVEL_ACCOUNT_DID, accountDID)
+
+    let success = false 
+    const envelope = await this.envelop({accountDID: accountDID, siweMessage: siweMessage, siweSignature: siweSignature})
+    await this.axios_client.post(`/v1/accounts/${accountDID}/agents`, envelope).then(async (response) => {
+      console.log("agent registration status", response.status, response.data)
+      const accessKey = uint8arrays.fromString(response.data.accessKey, 'base64url');
+      await this.runtime.setItem(SHOVEL_FS_ACCESS_KEY, accessKey)
+
+      const forestCID = CID.parse(response.data.forestCID).bytes
+      await this.runtime.setItem(SHOVEL_FS_FOREST_CID, forestCID)
+      success = true
+    }).catch(async (e) => {
+      console.log(e);
+      if (this.runtime.type != SERVER_RUNTIME) {
+        await this.runtime.removeItem(SHOVEL_FS_ACCESS_KEY)
+        await this.runtime.removeItem(SHOVEL_FS_FOREST_CID)
+      }
+      return e
+    })
+
+    return success
+  },
+
   async load(){
     try {
       let accessKey = await this.accessKey()
@@ -333,6 +314,8 @@ export class Agent {
     this.fs = new PrivateFS(helia)
     this.hubConnection = new HubConnection(this.helia, this.axios_client, dialPrefix)
     this.approver = new Approver(this)
+    this.broker = new Broker(this)
+    this.requester = new Requester(this)
   }
 
   async DID(){

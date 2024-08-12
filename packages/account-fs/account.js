@@ -4,6 +4,7 @@ import { Person } from "./repository/people/person.ts";
 import { ProfileRepository } from "./repository/profiles/profiles.js";
 import { MembersRepository } from "./repository/members/members.js";
 import { CommunityRepository } from "./repository/members/community.ts";
+import { Notification } from "./agent/handshakes/base/common.js";
 
 export class AccountV1 {
   constructor(agent) {
@@ -13,6 +14,24 @@ export class AccountV1 {
       people: new PeopleRepository(agent)
     }
     this.ps = new PeopleSearch(agent, this.repositories.people)
+    this.brokerDID = null
+  }
+
+  setBrokerDID(brokerDID) {
+    this.brokerDID = brokerDID
+  }
+
+  start(){
+    this.router = {
+      requester: {
+        "JOIN": { channel: "DIRECT", controller: "TBD", suffix: "membership" },
+        "RELATE": { channel: "BROKERED", controller: "TBD", suffix: "relationship" }
+      },
+      approver: {
+        "RELATE": { channel: "BROKERED", controller: "TBD", suffix: "relationship" }
+      },
+      broker: false
+    }
   }
 
   async loadRepositories(){
@@ -38,8 +57,21 @@ export class AccountV1 {
       for (const [key, value] of Object.entries(this.repositories)) {
         await value.initialise()
       }
+
+      if (this.brokerDID) {
+        try {
+          const handshake = await this.requestHandshake(this.brokerDID)
+          console.log("Handhshake with broker:", this.brokerDID, handshake)
+        } catch (e) {
+          console.log("Handshake Failed. Nuke. And Retry.", e)
+          await this.agent.destroy()
+          return false
+        }
+      }
+
+      return true
     }
-    return success
+    return false
   }
 
   async requestHandshake(accountDID, brokerDID = null) {
@@ -50,11 +82,11 @@ export class AccountV1 {
     if (brokerDID) {
       let status = await this.agent.establishConnection(brokerDID)
       console.log("inbox:", accountDID, status)
-      requester = await this.agent.actAsRelationshipRequester(brokerDID, accountDID)
+      requester = await this.agent.requester.create(accountDID, "RELATE", brokerDID)
     } else {
       let status = await this.agent.establishConnection(accountDID)
       console.log("inbox:", accountDID, status)
-      requester = await this.agent.actAsJoinRequester(accountDID)
+      requester = await this.agent.requester.create(accountDID, "JOIN")
     }
     
     const head = await this.agent.head()
@@ -74,7 +106,7 @@ export class AccountV1 {
       shouldWeWait = false
     })
 
-    setTimeout(() => { requester.initiate() }, 5)
+    await requester.initiate()
 
     await new Promise((resolve) => {
       const checkFlag = () => {
@@ -96,9 +128,9 @@ export class AccountV1 {
     let status = await this.agent.establishConnection(brokerDID)
     console.log("inbox:", accountDID, brokerDID, status)
 
-    await this.agent.actAsRelationshipApprover(brokerDID, accountDID)
+    let notification =  new Notification()
 
-    this.agent.approver.notification.addEventListener("challengeRecieved", async (challengeEvent) => {
+    notification.addEventListener("challengeRecieved", async (challengeEvent) => {
       console.log(challengeEvent.detail)
       let person = challengeEvent.detail.message.challenge.person
       let result = await this.repositories.people.create(new Person(person))
@@ -109,6 +141,9 @@ export class AccountV1 {
       // TODO Implementing auto-confim - check challenge to implement reject
       await challengeEvent.detail.confirm({person: self})
     })
+
+    this.agent.approver.register("RELATE", notification)
+    this.agent.approver.start()
   }
 
   async search(params) {

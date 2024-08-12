@@ -39,8 +39,9 @@ window.shovel = program
 
 const account = new AccountV1(program.agent)
 await account.loadRepositories()
+account.setBrokerDID("did:pkh:eip155:8453:0xb423B0cce60c98213512349cAB69F0050903EA92")
+
 const contactRepo = account.repositories.people 
-const accountv1 = account
 shovel.account = account
 
 customElements.define('contact-table', ContactTable);
@@ -51,15 +52,25 @@ const axios_client  = axios.create({
 })
 
 async function farcasterSignup(accountDID, siweMessage, siweSignature, profileData, fid) {
-  await accountv1.create(accountDID, siweMessage, siweSignature)
-  await accountv1.repositories.profile.set(profileData)
-  await accountv1.agent.appendName(fid, 'farcaster')
+  const success = await account.create(accountDID, siweMessage, siweSignature)
+  if(success) {
+    await account.repositories.profile.set(profileData)
+    await account.agent.appendName(fid, 'farcaster')
+  } else {
+    alert("Account creation failed. Please try again.")
+    window.location.reload()
+  }
 }
 
 async function ethereumSignup(accountDID,siweMessage, siweSignature, profileData,fid) {
-  await accountv1.create(accountDID, siweMessage, siweSignature)
-  await accountv1.repositories.profile.set(profileData)
-  await accountv1.agent.appendName(fid, 'ethereum')
+  const success = await account.create(accountDID, siweMessage, siweSignature)
+  if(success) {
+    await account.repositories.profile.set(profileData)
+    await account.agent.appendName(fid, 'ethereum')
+  } else {
+    alert("Account creation failed. Please try again.")
+    window.location.reload()
+  }
 }
 
 async function getNonce() {
@@ -140,11 +151,15 @@ async function updateProfile(handle, name, tags = [], text = '') {
 
 //updates given params with new values while keeping rest of the keys in Profile Object the same
 async function updateCommunityProfile(inputs, communityDID, profileSchema) {
-  return await accountv1.repositories.profile.updateCommunityProfile(communityDID, profileSchema, inputs)
+  return await account.repositories.profile.updateCommunityProfile(communityDID, profileSchema, inputs)
 }
 
 async function createCommunityProfile(params, communityDID, profileSchema) {
-  return await accountv1.repositories.profile.createCommunityProfile(communityDID, profileSchema, params)
+  return await account.repositories.profile.createCommunityProfile(communityDID, profileSchema, params)
+}
+
+async function updateTelegramInfoInCommunityProfile(telegramData, communityDID, profileSchema) {
+  return await account.repositories.profile.updateTelegramInCommunityProfile(communityDID, profileSchema, telegramData)
 }
 
 async function addContact(name, email='', tags = [], text = "", links = []) {
@@ -172,15 +187,14 @@ async function deleteContact(id) {
 
 async function signout() {
   if(window.ethereum) {
-    await window.ethereum.request({
-          method: "wallet_revokePermissions",
-          params: [
-            {
-              eth_accounts: {},
-            },
-          ],
-        });
-
+    try {
+      window.ethereum.request({
+            method: "wallet_revokePermissions",
+            params: [{eth_accounts: {}}],
+          });
+    } catch (e) {
+      console.log("metamask logout failed:", e)
+    }
   }
   await account.signout()
 
@@ -343,5 +357,6 @@ export {
   getMembers,
   getCommunityMembers,
   filterMembers,
-  uint8arrays
+  uint8arrays,
+  updateTelegramInfoInCommunityProfile
 };

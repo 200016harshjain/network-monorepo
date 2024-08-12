@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createDAVClient } from 'tsdav';
-import { createAppNode, Agent, Runtime, connection, SERVER_RUNTIME, MessageCapability, StorageCapability, AccountCapability, MembersRepository, CommunityRepository, Person } from 'account-fs/app.js';
+import { createAppNode, Agent, Runtime, connection, SERVER_RUNTIME, MessageCapability, StorageCapability, MembersRepository, CommunityRepository, Person, AccountV1, Notification } from 'account-fs/app.js';
 import { generateNonce } from 'siwe';
 import fs from 'node:fs/promises';
 import { access, constants } from 'node:fs/promises';
@@ -39,17 +39,50 @@ const helia = await createAppNode(path.join(homeDir, 'blocks'), path.join(homeDi
 const runtimeConfig = JSON.parse(await fs.readFile(path.join(configDir, 'agent_runtime_config.json'), 'utf8'))
 const runtime = new Runtime(SERVER_RUNTIME, runtimeConfig)
 const agent = new Agent(helia, connection[NETWORK].sync_host, connection[NETWORK].dial_prefix, runtime)
-Object.assign(Agent.prototype, MessageCapability);
+Object.assign(agent, MessageCapability);
+Object.assign(agent, StorageCapability);
 
 await agent.bootstrap()
-
-await agent.actAsRelationshipBroker()
 
 const address = process.env.ROLODEX_DNS_MULTADDR_PREFIX ? process.env.ROLODEX_DNS_MULTADDR_PREFIX + await helia.libp2p.peerId.toString() : (await helia.libp2p.getMultiaddrs()[0].toString()) 
 
 const brokerDID = await agent.accountDID()
-await agent.setInbox(address)
 console.log(address, await agent.DID(), brokerDID)
+
+const success = await agent.registerAgent(brokerDID, runtimeConfig.SHOVEL_AGENT_SIWE.message, runtimeConfig.SHOVEL_AGENT_SIWE.signature)
+console.log("agent status", success)
+
+if (success) {
+  await agent.load()
+  console.log(`Agent DID for rolodex:`, brokerDID)
+} else {
+  throw "Failed to register rolodex agent"
+}
+
+await agent.setInbox(address)
+
+const account = new AccountV1(agent)
+await account.loadRepositories()
+await agent.approver.start()
+await agent.broker.start()
+
+let notification = new Notification()
+
+notification.addEventListener("challengeRecieved", async (challengeEvent) => {
+  console.log("receieved from requester :", challengeEvent.detail)
+  let person = challengeEvent.detail.message.challenge.person
+  let result = await account.repositories.people.create(new Person(person))
+  console.log("person added to contacts :", result)
+
+  let self = await account.repositories.profile.contactForHandshake()
+  self.FN = "Rolodex"
+  self.CATEGORIES = "app"
+  console.log("Person with XML :", self)
+  // TODO Implementing auto-confim - check challenge to implement reject
+  await challengeEvent.detail.confirm({person: self})
+})
+
+agent.approver.register("JOIN", notification)
 
 ///
 //Agent for Community
@@ -70,14 +103,13 @@ if (RUN_COMMUNITY_AGENT == true) {
       // create runtime
       const communityRuntime = new Runtime(SERVER_RUNTIME, config)
       var communityAgent = new Agent(helia, connection[NETWORK].sync_host, connection[NETWORK].dial_prefix, communityRuntime)
-      communityAgent = Object.assign(communityAgent, AccountCapability);
       communityAgent = Object.assign(communityAgent, MessageCapability);
       communityAgent = Object.assign(communityAgent, StorageCapability);
       
-      const success = await communityAgent.register(communityAccountDID, config.SHOVEL_AGENT_SIWE.message, config.SHOVEL_AGENT_SIWE.signature)
+      const success = await communityAgent.registerAgent(communityAccountDID, config.SHOVEL_AGENT_SIWE.message, config.SHOVEL_AGENT_SIWE.signature)
       console.log("agent status", success, communityRuntime)
 
-      if (success.status) {
+      if (success) {
         await communityAgent.load()
         console.log(`community Agent DID for ${communityName}:`, await communityAgent.DID())
       } else {
@@ -92,25 +124,21 @@ if (RUN_COMMUNITY_AGENT == true) {
       await members.initialise()
       
       //Run Join Approver fro community agent
-      await communityAgent.actAsJoinApprover(communityAccountDID)
+      communityAgent.approver.start()
       communityAgents.push(communityAgent)
     }
 
     //start listeners for each agent
     communityAgents.forEach(async (agent) => {
       const communityRepo = new CommunityRepository(agent)
-      let contact
-      if (await communityRepo.isInitialised()) {
-        contact = await communityRepo.contactForHandshake()
-      } else {
-        contact = await (new MembersRepository(agent)).contactForHandshake()
-      }
+      const memberRepo = new MembersRepository(agent)
+      const contact = await memberRepo.contactForHandshake()
       const communityDID = await agent.accountDID()
+      let notification = new Notification()
 
-      agent.approver.notification.addEventListener("challengeRecieved", async (challengeEvent) => {
+      notification.addEventListener("challengeRecieved", async (challengeEvent) => {
         console.log("receieved from requester :", challengeEvent.detail)
-        if (challengeEvent.detail.channelName == agent.approver.channels["JOIN"].name){
-          var memberRepo = new MembersRepository(agent)
+        if (challengeEvent.detail.channelName == agent.approver.channel.name){
           let person = new Person(challengeEvent.detail.message.challenge.person)
           let valid = await person.validateProfileForCommunity(agent, communityRepo.sample(communityDID).profileSchema, challengeEvent.detail.message.challenge.head)
           console.log("sending a valid profile? ", valid, challengeEvent.detail.message.challenge.person)
@@ -124,6 +152,7 @@ if (RUN_COMMUNITY_AGENT == true) {
           throw `Member Add on Join Handshake failed for ${agent.accountDID()}`
         }
       })
+      agent.approver.register("JOIN", notification)
     })
   } catch (e){
     console.log(e)
