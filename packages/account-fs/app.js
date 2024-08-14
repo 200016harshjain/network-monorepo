@@ -1,13 +1,13 @@
 import { Agent, MessageCapability, StorageCapability, AccountCapability } from './agent/agent.js'
 import { Runtime, SERVER_RUNTIME } from './agent/runtime.js'
-import { MembersRepository } from './repository/members/members.js';
-import { CommunityRepository } from './repository/members/community.ts';
+import { MembersRepository } from './graph/repository/members/members.js';
+import { CommunityRepository } from './graph/repository/members/community.ts';
 import { createNode, APP } from './agent/helia_node.js';
 import { FsBlockstore } from 'blockstore-fs'
 import { FsDatastore } from 'datastore-fs'
-import { Person } from "./repository/people/person.ts";
-import { AccountV1 } from './account.js'
-import { Notification } from './agent/handshakes/base/common.js';
+import { Person } from "./graph/repository/people/person.ts";
+import { AccountV1 } from './graph/account.js'
+import { AppHandshakeApprover, CommunityHandshakeApprover } from './graph/approvers/index.ts';
 //import { prometheusMetrics } from '@libp2p/prometheus-metrics'
 
 async function createAppNode(blockPath, filePath) {
@@ -25,4 +25,4 @@ const connection = {
   "TESTNET": {network: "TESTNET", sync_host: "https://testnet.shovel.company:8001", dial_prefix: "/dns4/testnet.shovel.company/tcp/443/tls/ws/p2p/"}
 }
 
-export { Agent, Runtime, connection, createAppNode, SERVER_RUNTIME, MessageCapability, StorageCapability, AccountCapability, MembersRepository, CommunityRepository, Person, AccountV1, Notification }
+export { Agent, Runtime, connection, createAppNode, SERVER_RUNTIME, MessageCapability, StorageCapability, AccountCapability, MembersRepository, CommunityRepository, Person, AccountV1, AppHandshakeApprover, CommunityHandshakeApprover }

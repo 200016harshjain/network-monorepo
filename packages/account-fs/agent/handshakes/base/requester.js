@@ -51,22 +51,25 @@ class RequesterHandshake {
   }
 
   async negotiate(message) {
-    const { id, type, iv, msg, sessionKey } = JSON.parse(message)
+    const { id, type, iv, msg, sessionKey, challenge } = JSON.parse(message)
     if (!id || !type || !iv || !sessionKey) {
       console.log("ignoring invalid negotiate message")
       return
     }
 
     this.sessionKey = await this.parseSessionKey(iv, msg, sessionKey)    
-    const challenge = await this.challenge()
+    const challengeSubmission = await this.challenge()
+
+    const challengeData = await Envelope.open(challenge, this.sessionKey)
+    this.notification.emitEvent("challengeIntiated", challengeData)
 
     // TODO - add signature of DID to prove ownership
     const response = await Envelope.pack({
       did: await this.agent.DID(),
-      challenge: challenge
+      challenge: challengeSubmission
     }, this.sessionKey, id, type)
 
-    this.notification.emitEvent("challengeGenerated", challenge)
+    this.notification.emitEvent("challengeGenerated", challengeSubmission)
     this.channel.publish(response)
     this.state = "NEGOTIATED"
   }
@@ -163,7 +166,7 @@ export class Requester {
   }
 
   async create(approverDID, handshakeType, brokerDID=null) {
-    let forwardingChannel = (brokerDID) ? `${brokerHandle}-forwarding` : null
+    let forwardingChannel = (brokerDID) ? `${brokerDID}-forwarding` : null
     const channel = new Channel(this.agent.helia, `${approverDID}-approver`, forwardingChannel)
 
     let handshake = new RequesterHandshake(this.agent, channel, handshakeType)
