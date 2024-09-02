@@ -2,14 +2,14 @@ import * as uint8arrays from 'uint8arrays';
 import { Envelope, DIDKey } from './common.js';
 
 export class Handshake {
-  constructor(agent, channel, id, notification) {
+  constructor(agent, channel, id) {
     this.agent = agent
     this.channel = channel
     this.id = id
     this.state = "CREATED"
-    this.notification = notification
     this.sessionKey = undefined
     this.brokerDID = undefined
+    this.incoming = {}
   }
 
   async handle(message) {
@@ -28,60 +28,52 @@ export class Handshake {
   }
 
   async initiate(message) {
+    this.state = "INITIATED"
+    this.incoming[this.state] = message
+  }
+
+  async challenge(data) {
+    const message = this.incoming[this.state]
+
     const request = JSON.parse(message)
     const {sessionKey, sessionKeyMessage} = await this.generateSessionKey(request)
     this.sessionKey = sessionKey
 
-    let approver = this
-    this.notification.emitEvent("challengeIntiated", {
-      challenge: async (data) => { 
-        const message = JSON.parse(sessionKeyMessage)
-        message.challenge = await Envelope.pack(data, approver.sessionKey, message.id, message.type)
-        return await approver.channel.publish(JSON.stringify(message))
-      },
-      channelName: this.channel.name
-    })  
-    this.state = "INITIATED"
+    // TODO: create package once, hack to stick in one more field
+    const outgoing = JSON.parse(sessionKeyMessage)
+    outgoing.challenge = await Envelope.pack(data, this.sessionKey, outgoing.id, outgoing.type)
+    await this.channel.publish(JSON.stringify(outgoing))
   }
 
   async negotiate(message) {
-    const challengeMessage = await Envelope.open(message, this.sessionKey)
-
-    let approver = this
-    this.notification.emitEvent("challengeRecieved", {
-      confirm: async (confirmData) => { return await approver.confirm(message, challengeMessage, confirmData) },
-      reject: async () => { return await approver.reject(message) },
-      message: challengeMessage,
-      channelName: this.channel.name
-    })
     this.state = "NEGOTIATED"
+    this.incoming[this.state] = message
   }
 
-  async confirm(message, challenge, confirmData) {
-    console.log("message in approve#confirm", challenge)
-    // TODO remove one of the following method of getting confirm data
-    const data = confirmData || await this.confirmData()
+  async challengeSubmission(){
+    const message = await Envelope.open(this.incoming["NEGOTIATED"], this.sessionKey)
+    return message.challenge
+  }
 
+  async confirm(data) {
+    console.log("message in approve#confirm")
+
+    const message = this.incoming[this.state]
     const { id, type } = JSON.parse(message)
     const confirmMessage = await Envelope.pack({data: data, status: "CONFIRMED"}, this.sessionKey, id, type)
     
     await this.channel.publish(confirmMessage)
-    this.notification.emitEvent("CONFIRMED", challenge)
-    this.notification.emitEvent("complete", "CONFIRMED")
     this.state = "TERMINATED"
   }
 
-  async confirmData() {
-    throw "ImplementInSpecificHandshake"
-  }
-
-  async reject(message) {
+  async reject() {
     console.log("message in approve#reject")
+
+    const message = this.incoming[this.state]
     const { id, type } = JSON.parse(message)
     const rejectMessage = await Envelope.pack({ status: "REJECTED" }, this.sessionKey, id, type)
     
     await this.channel.publish(rejectMessage)
-    this.notification.emitEvent("complete", "REJECTED")
     this.state = "TERMINATED"
   }
 

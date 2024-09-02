@@ -2,6 +2,7 @@ export class PeopleSearch {
   constructor(agent, peopleRepo) {
     this.agent = agent
     this.peopleRepo = peopleRepo
+    this.concurrency = 10
   }
 
   // params -> query, depth and root
@@ -9,6 +10,7 @@ export class PeopleSearch {
   // depth - direct connections (1 degree) or shared connections via directs (2nd degree)
   // personUID - default root node or UID of direct connection
   async search({ query = "", depth = 1, personUID = null } = {}){
+    var startTime = performance.now()
     const queryString = query.toLowerCase()
     let matches = []
     let dis = this
@@ -19,7 +21,7 @@ export class PeopleSearch {
     async function peopleList(personUID) {
       if (personUID) {
         const rootPerson = await dis.peopleRepo.find(personUID)
-        return await rootPerson.getMembers(dis.agent)
+        return await rootPerson.getMembers(dis.agent, dis.concurrency)
       }
       return await dis.peopleRepo.list();
     }
@@ -31,7 +33,7 @@ export class PeopleSearch {
       }
   
       if (currentDepth >= depth) return;
-      let connections = await node.getMembers(dis.agent)
+      let connections = await node.getMembers(dis.agent, dis.concurrency)
       for (let connection of connections) {
         await searchRecursively(connection, currentDepth + 1);
       }
@@ -56,6 +58,9 @@ export class PeopleSearch {
 
       matches = Array.from(uniqueMatches.values());
     }
+
+    var endTime = performance.now()
+    console.log(`people search took ${endTime - startTime} milliseconds`)
 
     return matches
   }

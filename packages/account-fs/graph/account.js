@@ -15,23 +15,11 @@ export class AccountV1 {
     }
     this.ps = new PeopleSearch(agent, this.repositories.people)
     this.brokerDID = null
+    this.approvers = {}
   }
 
   setBrokerDID(brokerDID) {
     this.brokerDID = brokerDID
-  }
-
-  start(){
-    this.router = {
-      requester: {
-        "JOIN": { channel: "DIRECT", controller: "TBD", suffix: "membership" },
-        "RELATE": { channel: "BROKERED", controller: "TBD", suffix: "relationship" }
-      },
-      approver: {
-        "RELATE": { channel: "BROKERED", controller: "TBD", suffix: "relationship" }
-      },
-      broker: false
-    }
   }
 
   async loadRepositories(){
@@ -93,8 +81,23 @@ export class AccountV1 {
 
   async handshakeApprover() {
     await this.agent.establishConnection(this.brokerDID)
-    this.agent.approver.register("RELATE", new PeopleHandshakeApprover(this.repositories))
+    this.approvers.people = new PeopleHandshakeApprover(this.repositories)
+    this.agent.approver.register("RELATE", this.approvers.people)
     this.agent.approver.start()
+  }
+
+  async inbox() {
+    // TODO: handle multiple approvers
+    const approver = this.approvers.people
+    const handshakes = await this.agent.approver.ongoing()
+    return await Promise.all(handshakes.map(async (h) => {
+      const challenge = await h.challengeSubmission()
+      return {
+        person: challenge.person,
+        confirm: async () => { return await approver.confirm(h) },
+        reject: async () => { return await approver.reject(h) },
+      }
+    }))
   }
 
   async search(params) {
